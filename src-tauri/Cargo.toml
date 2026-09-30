@@ -1,6 +1,6 @@
 [package]
 name = "auto-wifi-connector"
-version = "0.2.0"
+version = "0.2.1"
 description = "Automatically reconnects to a working WiFi network when internet access drops"
 edition = "2021"
 rust-version = "1.77.2"

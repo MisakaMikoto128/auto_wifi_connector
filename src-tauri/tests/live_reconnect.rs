@@ -48,3 +48,12 @@ fn reconnect_after_disconnect() {
     );
     println!("online ok");
 }
+
+/// 扫描并打印当前可见网络，人工核对中文 SSID 无乱码。
+#[test]
+#[ignore]
+fn scan_prints_networks() {
+    for n in wifi::scan().expect("scan failed") {
+        println!("ssid={:?} signal={} saved={}", n.ssid, n.signal, n.saved);
+    }
+}

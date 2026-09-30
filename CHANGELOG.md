@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.1] - 2026-09-30
+
+### 修复
+
+- 中文等非 ASCII 的 WiFi 名称显示乱码：netsh 输出的标签部分是控制台代码页编码、名称值部分是 UTF-8 字节，解码改为按行识别名称行，值用 UTF-8（回退 GBK），其余用 GBK
+
 ## [0.2.0] - 2026-09-30
 
 ### 新增
@@ -41,5 +47,6 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/bea81fa...v0.2.0
 

@@ -28,15 +28,14 @@ pub struct WifiNetwork {
     pub connected: bool,
 }
 
-/// 执行 `netsh <args>` 并返回 GBK 解码后的标准输出。
+/// 执行 `netsh <args>` 并返回解码后的标准输出。
 fn run_netsh_plain(args: &[&str]) -> Result<String, String> {
     let output = Command::new("netsh")
         .args(args)
         .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| format!("failed to run netsh: {e}"))?;
-    let (text, _, _) = GBK.decode(&output.stdout);
-    Ok(text.into_owned())
+    Ok(decode_netsh_output(&output.stdout))
 }
 
 /// 执行 `netsh wlan <args>`。
@@ -44,6 +43,44 @@ fn run_netsh(args: &[&str]) -> Result<String, String> {
     let mut full = vec!["wlan"];
     full.extend_from_slice(args);
     run_netsh_plain(&full)
+}
+
+/// 解码 netsh 输出。
+///
+/// netsh 输出的标签部分（SSID、Signal 等）是控制台代码页编码（中文系统为 GBK，
+/// 英文系统为 ASCII），而 SSID 与配置文件名的值部分是 UTF-8 字节。
+/// 整体按单一编码解码必然有一方乱码，因此按行处理：
+/// 名称行的值用 UTF-8 解码（失败回退 GBK），其余内容用 GBK 解码。
+fn decode_netsh_output(bytes: &[u8]) -> String {
+    let mut out = String::new();
+    for raw_line in bytes.split(|&b| b == b'\n') {
+        let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
+        out.push_str(&decode_line(line));
+        out.push('\n');
+    }
+    out
+}
+
+/// 解码单行。`SSID n : 名称`、`All User Profile : 名称` 等名称行的
+/// 值部分按 UTF-8 解码，其余部分按 GBK 解码。
+fn decode_line(line: &[u8]) -> String {
+    let Some(colon) = line.iter().position(|&b| b == b':') else {
+        return GBK.decode(line).0.into_owned();
+    };
+    let label = GBK.decode(&line[..colon]).0;
+    let trimmed = label.trim();
+    let is_name_line = (trimmed.starts_with("SSID") && !trimmed.contains("BSSID"))
+        || trimmed.contains("User Profile")
+        || trimmed.contains("用户配置文件");
+    if !is_name_line {
+        return GBK.decode(line).0.into_owned();
+    }
+    let value = &line[colon + 1..];
+    let value_text = match String::from_utf8(value.to_vec()) {
+        Ok(text) => text,
+        Err(_) => GBK.decode(value).0.into_owned(),
+    };
+    format!("{label}:{value_text}")
 }
 
 /// 从行中标签与值的固定分隔位置取值：`标签 : 值`。
@@ -295,6 +332,55 @@ There is 1 interface on the system:
     Name                   : WLAN
     State                  : disconnected
 "#;
+
+    #[test]
+    fn decodes_utf8_ssid_value_with_ascii_label() {
+        // 真实样本：英文系统 netsh 输出，SSID 值为 UTF-8 字节（「耿」= E8 80 BF）
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(b"SSID 5 : ");
+        bytes.extend_from_slice("耿".as_bytes());
+        bytes.extend_from_slice(b"\r\n");
+        let text = decode_netsh_output(&bytes);
+        assert!(text.contains("SSID 5 : 耿"), "got: {text:?}");
+    }
+
+    #[test]
+    fn decodes_utf8_value_with_gbk_label() {
+        // 模拟中文系统：标签「所有用户配置文件」为 GBK 字节，值「魔法上网」为 UTF-8 字节
+        let (label, _, _) = GBK.encode("    所有用户配置文件 ");
+        let mut bytes = label.into_owned();
+        bytes.extend_from_slice(b": ");
+        bytes.extend_from_slice("魔法上网".as_bytes());
+        bytes.extend_from_slice(b"\r\n");
+        let text = decode_netsh_output(&bytes);
+        assert!(text.contains("所有用户配置文件"), "label lost: {text:?}");
+        assert!(text.contains("魔法上网"), "value lost: {text:?}");
+    }
+
+    #[test]
+    fn decodes_gbk_value_when_not_utf8() {
+        // 值为 GBK 字节时回退 GBK 解码
+        let (value, _, _) = GBK.encode("中文热点");
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(b"SSID 1 : ");
+        bytes.extend_from_slice(&value);
+        bytes.extend_from_slice(b"\r\n");
+        let text = decode_netsh_output(&bytes);
+        assert!(text.contains("中文热点"), "got: {text:?}");
+    }
+
+    #[test]
+    fn parses_profiles_from_raw_utf8_name_bytes() {
+        // 真实样本：profiles 输出的配置名是 UTF-8 字节，经解码后应提取正确中文名
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(b"User profiles\r\n-------------\r\n    All User Profile     : ");
+        bytes.extend_from_slice("3D打印机".as_bytes());
+        bytes.extend_from_slice(b"\r\n    All User Profile     : ");
+        bytes.extend_from_slice("抛瓦拉满_5G.".as_bytes());
+        bytes.extend_from_slice(b"\r\n");
+        let profiles = parse_profiles(&decode_netsh_output(&bytes));
+        assert_eq!(profiles, vec!["3D打印机", "抛瓦拉满_5G."]);
+    }
 
     #[test]
     fn parses_english_networks() {
