@@ -173,6 +173,21 @@ fn run_recovery(app: &AppHandle, shared: &Shared) -> bool {
             guard.round
         };
 
+        // WiFi 无线电关闭（RF 开关、飞行模式）时扫描不到网络，先尝试打开
+        if wifi::wifi_radio_on() == Some(false) {
+            push_log(app, shared, "WiFi 未打开，正在打开".to_string());
+            if wifi::ensure_wifi_on() {
+                push_log(app, shared, "WiFi 已打开".to_string());
+            } else {
+                push_log(
+                    app,
+                    shared,
+                    "WiFi 打开失败，请在系统设置中手动打开".to_string(),
+                );
+            }
+            std::thread::sleep(Duration::from_secs(3));
+        }
+
         let networks = wifi::scan().unwrap_or_default();
         let candidates = pick_candidates(&networks);
         if candidates.is_empty() {

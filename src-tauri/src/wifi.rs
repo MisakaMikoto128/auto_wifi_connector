@@ -2,11 +2,16 @@
 //!
 //! netsh 输出语言跟随系统区域设置，解析同时兼容英文与中文标签；
 //! 输出字节按 GBK 解码，以正确读取含非 ASCII 字符的 SSID。
+//! 所有子进程均带 CREATE_NO_WINDOW 标志，否则 GUI 程序中每次调用都会闪现控制台窗口。
 
 use encoding_rs::GBK;
 use serde::Serialize;
+use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::time::{Duration, Instant};
+
+/// Win32 创建进程标志：不创建控制台窗口。
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// 一个扫描到的 WiFi 网络。
 #[derive(Debug, Clone, Serialize)]
@@ -23,15 +28,22 @@ pub struct WifiNetwork {
     pub connected: bool,
 }
 
-/// 执行 `netsh wlan <args>` 并返回 GBK 解码后的标准输出。
-fn run_netsh(args: &[&str]) -> Result<String, String> {
+/// 执行 `netsh <args>` 并返回 GBK 解码后的标准输出。
+fn run_netsh_plain(args: &[&str]) -> Result<String, String> {
     let output = Command::new("netsh")
-        .arg("wlan")
         .args(args)
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| format!("failed to run netsh: {e}"))?;
     let (text, _, _) = GBK.decode(&output.stdout);
     Ok(text.into_owned())
+}
+
+/// 执行 `netsh wlan <args>`。
+fn run_netsh(args: &[&str]) -> Result<String, String> {
+    let mut full = vec!["wlan"];
+    full.extend_from_slice(args);
+    run_netsh_plain(&full)
 }
 
 /// 从行中标签与值的固定分隔位置取值：`标签 : 值`。
@@ -151,6 +163,42 @@ pub fn connect(ssid: &str) -> Result<(), String> {
     } else {
         Err(out.trim().to_string())
     }
+}
+
+/// WiFi 无线电是否打开。查询失败或不存在 WiFi 无线电时返回 None。
+///
+/// 使用 WinRT Radio API，覆盖 RF 开关关闭、飞行模式等「WiFi 未打开」的场景。
+pub fn wifi_radio_on() -> Option<bool> {
+    use windows::Devices::Radios::{Radio, RadioKind, RadioState};
+    let radios = Radio::GetRadiosAsync().ok()?.join().ok()?;
+    let mut result = None;
+    for radio in radios {
+        if radio.Kind().ok() == Some(RadioKind::WiFi) {
+            let on = radio.State().ok() == Some(RadioState::On);
+            result = Some(result.unwrap_or(false) || on);
+        }
+    }
+    result
+}
+
+/// 确保 WiFi 无线电打开：先经 WinRT Radio API 打开，再以 netsh 启用适配器兜底
+/// （后者需要管理员权限，权限不足时静默失败）。返回操作后的打开状态。
+pub fn ensure_wifi_on() -> bool {
+    use windows::Devices::Radios::{Radio, RadioKind, RadioState};
+    if wifi_radio_on() == Some(true) {
+        return true;
+    }
+    if let Ok(op) = Radio::GetRadiosAsync() {
+        if let Ok(radios) = op.join() {
+            for radio in radios {
+                if radio.Kind().ok() == Some(RadioKind::WiFi) {
+                    let _ = radio.SetStateAsync(RadioState::On).map(|op| op.join());
+                }
+            }
+        }
+    }
+    let _ = run_netsh_plain(&["interface", "set", "interface", "WLAN", "enable"]);
+    wifi_radio_on().unwrap_or(false)
 }
 
 /// 断开当前 WiFi 连接。

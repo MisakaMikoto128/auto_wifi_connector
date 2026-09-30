@@ -2,7 +2,20 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.1.1] - 2026-09-30
+## [0.2.0] - 2026-09-30
+
+### 新增
+
+- WiFi 无线电关闭（RF 开关、飞行模式）时自动尝试打开：WinRT Radio API 设置无线电状态，netsh 启用适配器兜底（需要管理员权限，失败时在界面日志提示手动打开）
+
+### 修复
+
+- **P0**：GUI 程序每次调用 netsh 都会闪现控制台窗口并抢夺焦点。所有子进程补充 `CREATE_NO_WINDOW` 标志
+- 修复连通性探测的误判：本机代理虚拟网卡（TUN 模式）在 WiFi 物理断开后仍响应 HTTP 探测，改为「WiFi 已关联 且 互联网可达」综合判定
+
+注意：v0.1.0 与 v0.1.1 因上述 P0 缺陷已撤回，请勿使用。
+
+## [0.1.1] - 2026-09-30（已撤回）
 
 ### 新增
 
@@ -15,7 +28,7 @@
 
 - 清理全部 clippy 警告，统一使用 `sort_by_key` 降序排序
 
-## [0.1.0] - 2026-09-30
+## [0.1.0] - 2026-09-30（已撤回）
 
 ### 新增
 
@@ -28,5 +41,5 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
-[0.1.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/releases/tag/v0.1.0
+[0.2.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/bea81fa...v0.2.0
+

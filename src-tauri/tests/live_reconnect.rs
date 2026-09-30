@@ -8,6 +8,14 @@
 use auto_wifi_connector_lib::{netcheck, wifi};
 use std::time::Duration;
 
+/// WiFi 无线电状态检测：当前 WiFi 开启，应返回 Some(true)。
+/// CI 运行在无 WiFi 硬件的虚拟机上，故标记为手动运行。
+#[test]
+#[ignore]
+fn wifi_radio_reports_on() {
+    assert_eq!(wifi::wifi_radio_on(), Some(true));
+}
+
 #[test]
 #[ignore]
 fn reconnect_after_disconnect() {
