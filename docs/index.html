@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto WiFi Connector — 自动 WiFi 断网重连</title>
+  <style>
+    :root {
+      --paper: #f6f1e7;
+      --paper-dark: #efe8d8;
+      --ink: #1a1a1a;
+      --ink-soft: #4a4a4a;
+      --ink-faint: #8a8378;
+      --red: #8f1d1d;
+      --serif: Georgia, "Times New Roman", "Noto Serif SC", "Songti SC", "SimSun", serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: var(--serif);
+      background: #ddd5c3;
+      color: var(--ink);
+      line-height: 1.75;
+    }
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      background: var(--paper);
+      padding: 32px 48px 24px;
+      min-height: 100vh;
+    }
+    .masthead-meta {
+      display: flex; justify-content: center; gap: 10px;
+      font-size: 12px; letter-spacing: 0.12em; color: var(--ink-soft);
+      border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink);
+      padding: 3px 0;
+    }
+    h1 { font-size: 52px; text-align: center; line-height: 1.2; margin-top: 16px; }
+    .subtitle {
+      text-align: center; font-size: 14px; letter-spacing: 0.28em;
+      color: var(--ink-soft); margin: 6px 0 18px;
+    }
+    .rule { border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); height: 4px; }
+    .rule.thin { border-top-width: 1px; height: 3px; margin-top: 28px; }
+    .lede {
+      font-size: 17px; text-align: justify; margin: 22px 0 6px;
+    }
+    .lede::first-letter {
+      font-size: 52px; float: left; line-height: 0.85;
+      padding: 4px 8px 0 0; font-weight: 700;
+    }
+    figure { margin: 22px 0; text-align: center; }
+    figure img {
+      max-width: 100%; border: 1px solid var(--ink);
+      box-shadow: 4px 4px 0 rgba(26,26,26,0.15);
+    }
+    figcaption { font-size: 12px; font-style: italic; color: var(--ink-faint); margin-top: 6px; }
+    h2 {
+      font-size: 22px; letter-spacing: 0.06em; margin: 30px 0 10px;
+      border-bottom: 1px solid var(--ink); padding-bottom: 4px;
+    }
+    h2 .en { font-size: 11px; letter-spacing: 0.18em; color: var(--ink-faint); font-style: italic; margin-left: 6px; }
+    p { margin: 8px 0; font-size: 15px; }
+    ul { margin: 8px 0 8px 22px; font-size: 15px; }
+    li { margin: 4px 0; }
+    code, pre {
+      font-family: "Cascadia Code", Consolas, monospace;
+      background: var(--paper-dark); border: 1px solid #b7ad99;
+    }
+    code { padding: 1px 5px; font-size: 13px; }
+    pre { padding: 12px 16px; font-size: 13px; overflow-x: auto; line-height: 1.6; margin: 10px 0; }
+    .badge-row { text-align: center; margin: 14px 0 4px; }
+    .badge-row a {
+      display: inline-block; border: 1px solid var(--ink); padding: 4px 14px;
+      margin: 0 6px; color: var(--ink); text-decoration: none; font-size: 14px;
+      letter-spacing: 0.1em;
+    }
+    .badge-row a:hover { background: var(--ink); color: var(--paper); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 10px 0; }
+    th, td { border: 1px solid #b7ad99; padding: 5px 10px; text-align: left; }
+    th { background: var(--paper-dark); }
+    .colophon {
+      text-align: center; font-size: 12px; color: var(--ink-faint);
+      font-style: italic; padding: 10px 0 4px;
+    }
+    .red { color: var(--red); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="masthead-meta">
+      <span>OPEN SOURCE GAZETTE</span><span>·</span><span>Vol. I — No. 1</span><span>·</span><span>MIT LICENSE</span>
+    </div>
+    <h1>Auto WiFi Connector</h1>
+    <p class="subtitle">自动 WiFi 断网重连 · RUST + TAURI 2</p>
+    <div class="rule"></div>
+
+    <p class="lede">
+      笔记本的 WiFi 有时明明显示已连接，网页却打不开。Auto WiFi Connector 周期性探测互联网连通性，
+      一旦判定断网，便取所有「可见且已保存密码」的网络，按信号强度依次尝试连接，
+      直到真正恢复上网；一轮未恢复则等待后继续，直到成功为止。
+    </p>
+
+    <div class="badge-row">
+      <a href="https://github.com/">GitHub 仓库</a>
+      <a href="#download">下载</a>
+      <a href="#usage">使用说明</a>
+    </div>
+
+    <figure>
+      <img src="images/screenshot-online.png" alt="主界面：左列 WiFi 列表，右列在线状态" />
+      <figcaption>图 1 — 主界面。左列为按信号排序的 WiFi 名录，右列「重连台」显示网络在线。</figcaption>
+    </figure>
+
+    <h2>断网恢复过程 <span class="en">Recovery in Progress</span></h2>
+    <p>
+      判定断网后，右列切换为恢复视图：<span class="red">红色头条</span>标示连接中断，
+      候选网络按信号降序逐行尝试——连接中的行显示斜纹流动，失败的行划上删除线，成功的行反色盖定，
+      底部日志逐行记录全过程。
+    </p>
+
+    <figure>
+      <img src="images/screenshot-recovering.png" alt="恢复过程：候选网络依次尝试" />
+      <figcaption>图 2 — 恢复过程。正在依次尝试已存密码的网络。</figcaption>
+    </figure>
+
+    <h2>工作原理 <span class="en">How It Works</span></h2>
+    <pre>每 10 秒: WiFi 已关联 且 任一探测端点可达?
+  ├─ 是 → 保持监控
+  └─ 否 → 候选 = 可见网络 ∩ 已保存配置, 按信号降序
+           依次: netsh 连接 → 等待关联(≤12s) → 验证连通性
+           任一成功即恢复; 全部失败则 15s 后开始下一轮</pre>
+    <ul>
+      <li><b>连通性探测</b>：向多个固定 HTTP 204/200 端点发起请求；结合 WiFi 关联状态综合判定，避免本机代理虚拟网卡（TUN 模式）造成的误判</li>
+      <li><b>时间有界</b>：探测整体限时返回，网卡切换引起的 DNS 长时间阻塞不会使监控停摆</li>
+      <li><b>跨区域兼容</b>：netsh 输出解析同时兼容中英文系统，含非 ASCII 字符的 SSID 也能正确处理</li>
+    </ul>
+
+    <h2>后台运行 <span class="en">Tray &amp; Autostart</span></h2>
+    <p>
+      关闭窗口后程序隐藏到系统托盘继续监控；右键托盘图标可选择「显示窗口」或「退出」。
+      程序默认注册开机自启，可在界面中关闭。
+    </p>
+
+    <figure>
+      <img src="images/screenshot-tray.png" alt="托盘菜单：显示窗口与退出" />
+      <figcaption>图 3 — 托盘图标与右键菜单。</figcaption>
+    </figure>
+
+    <h2 id="usage">使用说明 <span class="en">Usage</span></h2>
+    <ul>
+      <li>开启「自动断网重连轮询」开关，程序即开始监控；关闭窗口不影响运行</li>
+      <li>只有「已存密码」的网络才会被用于重连——请事先在 Windows 中连接并保存常用 WiFi 的密码</li>
+      <li>「开机自启」默认开启，登录后自动在托盘待命</li>
+    </ul>
+
+    <h2 id="download">构建 <span class="en">Build</span></h2>
+    <p>环境要求：Rust 1.77+、Windows 10/11。</p>
+    <pre>git clone &lt;repo-url&gt;
+cd auto_wifi_connector/src-tauri
+cargo run                 # 调试运行
+cargo test                # 单元测试
+cargo tauri build         # 产出安装包（需 tauri-cli）</pre>
+
+    <table>
+      <tr><th>参数</th><th>值</th><th>说明</th></tr>
+      <tr><td>CHECK_INTERVAL</td><td>10s</td><td>连通性检测周期</td></tr>
+      <tr><td>ASSOCIATE_TIMEOUT</td><td>12s</td><td>单次连接等待关联完成的超时</td></tr>
+      <tr><td>ROUND_DELAY</td><td>15s</td><td>一轮候选全部失败后的等待</td></tr>
+    </table>
+
+    <div class="rule thin"></div>
+    <p class="colophon">Auto WiFi Connector · MIT License · 由 Rust 与 Tauri 印制</p>
+  </div>
+</body>
+</html>

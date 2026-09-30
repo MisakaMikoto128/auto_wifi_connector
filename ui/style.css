@@ -1,0 +1,550 @@
+/* ========== The WiFi Herald — 纽约报刊风格 ========== */
+
+:root {
+  --paper: #f6f1e7;
+  --paper-dark: #efe8d8;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a4a;
+  --ink-faint: #8a8378;
+  --red: #8f1d1d;
+  --rule: #1a1a1a;
+  --serif: Georgia, "Times New Roman", "Noto Serif SC", "Songti SC", "SimSun", serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--serif);
+  background: #ddd5c3;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(26, 26, 26, 0.012) 3px 4px),
+    var(--paper);
+  padding: 22px 34px 14px;
+}
+
+/* ---------- 报头 ---------- */
+
+.masthead { text-align: center; }
+
+.masthead-meta {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 3px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta-sep { color: var(--ink-faint); }
+
+.title {
+  font-size: 58px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  margin-top: 12px;
+}
+
+.subtitle {
+  font-size: 15px;
+  letter-spacing: 0.3em;
+  color: var(--ink-soft);
+  margin: 4px 0 14px;
+}
+
+.subtitle-sep { color: var(--ink-faint); margin: 0 8px; }
+
+.rule-masthead {
+  border-top: 3px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  height: 4px;
+}
+
+.rule-masthead.thin { border-top-width: 1px; height: 3px; }
+
+/* ---------- 分栏 ---------- */
+
+.columns {
+  flex: 1;
+  display: flex;
+  gap: 28px;
+  padding: 18px 0 10px;
+  min-height: 0;
+}
+
+.col-left { flex: 1.15; min-width: 0; display: flex; flex-direction: column; }
+.col-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.col-divider { width: 1px; background: var(--rule); opacity: 0.55; }
+
+.col-title {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.col-title-en {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin-left: 6px;
+}
+
+.col-foot {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* ---------- 状态条 ---------- */
+
+.status-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  background: var(--paper-dark);
+  margin-bottom: 10px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  flex: none;
+}
+
+.dot.online { background: #1d6b2f; animation: pulse 2.4s infinite; }
+.dot.offline { background: var(--red); animation: blink 0.9s steps(2, start) infinite; }
+
+/* ---------- WiFi 列表 ---------- */
+
+.wifi-list {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.wifi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 6px;
+  border-bottom: 1px dotted #b7ad99;
+  animation: row-in 0.35s ease both;
+}
+
+.wifi-row:hover { background: var(--paper-dark); }
+
+.wifi-row .idx {
+  font-size: 12px;
+  color: var(--ink-faint);
+  width: 20px;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.wifi-row .ssid {
+  font-size: 17px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wifi-row.connected .ssid::before { content: "● "; font-size: 12px; color: #1d6b2f; }
+
+.badge {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  flex: none;
+  transform: translateY(-1px);
+}
+
+.badge.saved { background: var(--ink); color: var(--paper); }
+
+.badge.open-net { border-color: var(--ink-faint); color: var(--ink-faint); }
+
+.badge.unsaved { border-style: dashed; color: var(--ink-faint); border-color: var(--ink-faint); }
+
+.wifi-row .spacer { flex: 1; }
+
+.signal-bars {
+  display: inline-flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 14px;
+  flex: none;
+}
+
+.signal-bars i {
+  width: 4px;
+  background: transparent;
+  border: 1px solid var(--ink-faint);
+}
+
+.signal-bars i:nth-child(1) { height: 5px; }
+.signal-bars i:nth-child(2) { height: 8px; }
+.signal-bars i:nth-child(3) { height: 11px; }
+.signal-bars i:nth-child(4) { height: 14px; }
+
+.signal-bars i.on { background: var(--ink); border-color: var(--ink); }
+
+.pct {
+  font-size: 12px;
+  color: var(--ink-soft);
+  width: 38px;
+  text-align: right;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 开关 ---------- */
+
+.controls {
+  border: 1px solid var(--rule);
+  background: var(--paper-dark);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+}
+
+.switch-row + .switch-row { border-top: 1px dotted #b7ad99; }
+
+.switch-label { font-size: 15px; }
+
+.switch {
+  position: relative;
+  width: 52px;
+  height: 24px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 18px;
+  background: transparent;
+  border: 1px solid var(--ink);
+  transition: left 0.18s ease, background 0.18s ease;
+}
+
+.switch.on .knob {
+  left: 26px;
+  background: var(--ink);
+}
+
+.switch.on { box-shadow: inset 0 0 0 1px var(--ink); }
+
+/* ---------- 舞台区 ---------- */
+
+.stage {
+  border: 1px solid var(--rule);
+  min-height: 300px;
+  position: relative;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.stage-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: view-in 0.4s ease both;
+}
+
+.hidden { display: none; }
+
+.big-word {
+  font-size: 44px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.big-cn { font-size: 20px; letter-spacing: 0.5em; margin-top: 2px; text-indent: 0.5em; }
+
+.muted { color: var(--ink-faint); }
+
+.stage-note {
+  margin-top: 14px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* 在线波纹 */
+
+.ripple-box {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 18px;
+}
+
+.ripple {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 2.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.ripple.r2 { animation-delay: 0.9s; }
+.ripple.r3 { animation-delay: 1.8s; }
+
+.ripple-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+/* 断网恢复 */
+
+#view-recovering { justify-content: flex-start; }
+
+.breaking {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--red);
+  border-top: 3px solid var(--red);
+  border-bottom: 1px solid var(--red);
+  padding: 6px 0;
+  width: 100%;
+  text-align: center;
+}
+
+.breaking-blink { animation: blink 1s steps(2, start) infinite; }
+
+.breaking-cn {
+  font-size: 13px;
+  color: var(--red);
+  margin-top: 8px;
+  letter-spacing: 0.1em;
+}
+
+.round-line {
+  margin-top: 10px;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.attempt-list {
+  list-style: none;
+  width: 100%;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+
+.attempt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px dotted #b7ad99;
+  font-size: 16px;
+  animation: row-in 0.3s ease both;
+}
+
+.attempt-row .cursor {
+  width: 16px;
+  flex: none;
+  font-weight: 700;
+}
+
+.attempt-row.connecting {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 8px,
+      rgba(26, 26, 26, 0.06) 8px 16px
+    );
+  background-size: 200% 100%;
+  animation: barberpole 1.2s linear infinite;
+}
+
+.attempt-row.connecting .cursor::before {
+  content: "▸";
+  animation: blink 0.7s steps(2, start) infinite;
+}
+
+.attempt-row.failed .a-ssid {
+  text-decoration: line-through;
+  color: var(--ink-faint);
+}
+
+.attempt-row.failed .result { color: var(--red); }
+
+.attempt-row.success {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.attempt-row.success .result { color: var(--paper); }
+
+.attempt-row.pending .a-ssid { color: var(--ink-soft); }
+
+.attempt-row .a-ssid {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attempt-row .spacer { flex: 1; }
+
+.attempt-row .result {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  flex: none;
+}
+
+.attempt-row .a-signal {
+  font-size: 11px;
+  color: var(--ink-faint);
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.attempt-row.success .a-signal { color: var(--paper-dark); }
+
+/* ---------- 日志 ---------- */
+
+.log-box {
+  margin-top: 12px;
+  border: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 90px;
+}
+
+.log-title {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--rule);
+  padding: 4px 8px;
+  background: var(--paper-dark);
+}
+
+.log {
+  list-style: none;
+  font-size: 12.5px;
+  line-height: 1.7;
+  padding: 6px 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.log li {
+  animation: row-in 0.3s ease both;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log li::before { content: "— "; color: var(--ink-faint); }
+
+.log-empty { color: var(--ink-faint); font-style: italic; }
+
+/* ---------- 页脚 ---------- */
+
+.colophon { margin-top: 6px; }
+
+.colophon p {
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-style: italic;
+  padding: 6px 0 2px;
+}
+
+/* ---------- 动画 ---------- */
+
+@keyframes ripple {
+  0% { transform: scale(0.12); opacity: 0.9; }
+  70% { opacity: 0.25; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes barberpole {
+  from { background-position: 0 0; }
+  to { background-position: 45px 0; }
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes view-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---------- 滚动条 ---------- */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--paper-dark); }
+::-webkit-scrollbar-thumb { background: #b7ad99; border: 2px solid var(--paper-dark); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UI Preview — Auto WiFi Connector</title>
+  <link rel="stylesheet" href="../ui/style.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead-meta">
+        <span id="masthead-date">—</span>
+        <span class="meta-sep">·</span>
+        <span>Vol. I — No. 1</span>
+        <span class="meta-sep">·</span>
+        <span id="masthead-clock">—</span>
+      </div>
+      <h1 class="title">The WiFi Herald</h1>
+      <p class="subtitle">自动 WiFi 重连报 <span class="subtitle-sep">|</span> AUTO WIFI CONNECTOR</p>
+      <div class="rule-masthead"></div>
+    </header>
+
+    <main class="columns">
+      <section class="col-left">
+        <h2 class="col-title">网络名录 <span class="col-title-en">Network Directory</span></h2>
+        <div class="status-strip" id="status-strip">
+          <span class="dot" id="status-dot"></span><span id="status-text">正在扫描…</span>
+        </div>
+        <ul class="wifi-list" id="wifi-list"></ul>
+        <p class="col-foot">按信号强度排序 · 「已存密码」表示可直接连接</p>
+      </section>
+
+      <div class="col-divider"></div>
+
+      <section class="col-right">
+        <h2 class="col-title">重连台 <span class="col-title-en">Reconnect Desk</span></h2>
+
+        <div class="controls">
+          <div class="switch-row">
+            <span class="switch-label">自动断网重连轮询</span>
+            <button class="switch" id="auto-switch" role="switch" aria-checked="false" aria-label="自动断网重连轮询">
+              <span class="knob"></span>
+            </button>
+          </div>
+          <div class="switch-row">
+            <span class="switch-label">开机自启</span>
+            <button class="switch" id="autostart-switch" role="switch" aria-checked="false" aria-label="开机自启">
+              <span class="knob"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="stage" id="stage">
+          <div class="stage-view" id="view-standby">
+            <div class="big-word muted">STANDBY</div>
+            <div class="big-cn muted">待命</div>
+            <p class="stage-note">开启上方开关后，将持续监测网络连通性</p>
+          </div>
+
+          <div class="stage-view hidden" id="view-online">
+            <div class="ripple-box">
+              <span class="ripple r1"></span>
+              <span class="ripple r2"></span>
+              <span class="ripple r3"></span>
+              <span class="ripple-core"></span>
+            </div>
+            <div class="big-word">ONLINE</div>
+            <div class="big-cn">网络在线</div>
+            <p class="stage-note" id="online-note">每 10 秒探测一次连通性</p>
+          </div>
+
+          <div class="stage-view hidden" id="view-recovering">
+            <div class="breaking">
+              <span class="breaking-blink">●</span> CONNECTION LOST <span class="breaking-blink">●</span>
+            </div>
+            <div class="breaking-cn">连接中断 — 正在依次尝试已存密码的网络</div>
+            <div class="round-line" id="round-line">第 1 轮尝试</div>
+            <ul class="attempt-list" id="attempt-list"></ul>
+          </div>
+        </div>
+
+        <div class="log-box">
+          <div class="log-title">重连记录 <span class="col-title-en">Log</span></div>
+          <ul class="log" id="log"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <div class="rule-masthead thin"></div>
+      <p>Printed by Auto WiFi Connector · 关闭窗口后程序转入托盘运行 · 右键托盘图标可退出</p>
+    </footer>
+  </div>
+
+  <!-- UI 预览 mock：用 ?state=standby|online|recovering 切换状态 -->
+  <script>
+    const MOCK_NETWORKS = [
+      { ssid: "CMCC-u2c6-5G", signal: 79, secured: true, saved: true, connected: true },
+      { ssid: "抛瓦拉满_5G.", signal: 68, secured: true, saved: true, connected: false },
+      { ssid: "Redmi K70", signal: 52, secured: true, saved: true, connected: false },
+      { ssid: "CafeGuest", signal: 38, secured: false, saved: false, connected: false },
+      { ssid: "TP-LINK_5G_6403", signal: 21, secured: true, saved: false, connected: false },
+    ];
+
+    const state = new URLSearchParams(location.search).get("state") || "recovering";
+
+    const MOCK_SNAPSHOTS = {
+      standby: {
+        enabled: false, online: true, phase: "disabled", round: 0,
+        candidates: [], current: -1, log: [],
+      },
+      online: {
+        enabled: true, online: true, phase: "monitoring", round: 0,
+        candidates: [], current: -1,
+        log: ["检测到断网，开始自动重连", "CMCC-u2c6-5G 连接成功，网络已恢复"],
+      },
+      recovering: {
+        enabled: true, online: false, phase: "recovering", round: 2,
+        candidates: [
+          { ssid: "CMCC-u2c6-5G", signal: 79, status: "failed" },
+          { ssid: "抛瓦拉满_5G.", signal: 68, status: "connecting" },
+          { ssid: "Redmi K70", signal: 52, status: "pending" },
+        ],
+        current: 1,
+        log: [
+          "检测到断网，开始自动重连",
+          "第 1 轮：发现 3 个候选网络，开始依次尝试",
+          "连接 CMCC-u2c6-5G",
+          "CMCC-u2c6-5G 已关联但无法访问互联网",
+          "第 1 轮未恢复网络，15s 后开始下一轮",
+          "第 2 轮：发现 3 个候选网络，开始依次尝试",
+          "连接 抛瓦拉满_5G.",
+        ],
+      },
+    };
+
+    window.__TAURI__ = {
+      core: {
+        invoke: async (cmd) => {
+          if (cmd === "get_wifi_list") return MOCK_NETWORKS;
+          if (cmd === "get_snapshot") return MOCK_SNAPSHOTS[state];
+          if (cmd === "autostart_is_enabled") return true;
+          return null;
+        },
+      },
+      event: { listen: async () => {} },
+    };
+  </script>
+  <script src="../ui/app.js"></script>
+</body>
+</html>
