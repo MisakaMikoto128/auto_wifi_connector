@@ -42,7 +42,11 @@ fn autostart_is_enabled(app: AppHandle) -> bool {
 #[tauri::command]
 fn autostart_set(app: AppHandle, enabled: bool) -> bool {
     let launcher = app.autolaunch();
-    let _ = if enabled { launcher.enable() } else { launcher.disable() };
+    let _ = if enabled {
+        launcher.enable()
+    } else {
+        launcher.disable()
+    };
     launcher.is_enabled().unwrap_or(false)
 }
 
@@ -63,7 +67,9 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
             TrayIconBuilder::new()
-                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?)
+                .icon(tauri::image::Image::from_bytes(include_bytes!(
+                    "../icons/tray.png"
+                ))?)
                 .menu(&menu)
                 .tooltip("Auto WiFi Connector")
                 .on_menu_event(|app, event| match event.id.as_ref() {

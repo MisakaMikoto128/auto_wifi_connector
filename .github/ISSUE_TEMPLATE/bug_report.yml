@@ -1,0 +1,40 @@
+name: 缺陷报告
+description: 报告程序的问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 发生了什么，预期行为是什么
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 列出触发问题的操作顺序
+      placeholder: "1. 打开程序\n2. 开启自动断网重连轮询\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: 界面日志
+      description: 复制右列「重连记录」中的内容
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: Windows 11 23H2
+    validations:
+      required: true

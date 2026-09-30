@@ -30,7 +30,11 @@ pub fn parse_status_line(line: &str) -> Option<u16> {
 
 /// 向单个端点发起探测，返回是否得到预期状态码。
 fn probe(host: &str, path: &str, expected_status: u16) -> bool {
-    let Some(addr) = (host, 80).to_socket_addrs().ok().and_then(|mut it| it.next()) else {
+    let Some(addr) = (host, 80)
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut it| it.next())
+    else {
         return false;
     };
     let Ok(mut stream) = TcpStream::connect_timeout(&addr, CONNECT_TIMEOUT) else {
@@ -55,7 +59,9 @@ fn probe(host: &str, path: &str, expected_status: u16) -> bool {
 
 /// 任一探测端点可达即判定网络可用。
 pub fn is_online() -> bool {
-    PROBES.iter().any(|(host, path, status)| probe(host, path, *status))
+    PROBES
+        .iter()
+        .any(|(host, path, status)| probe(host, path, *status))
 }
 
 /// 时间有界的连通性判定。

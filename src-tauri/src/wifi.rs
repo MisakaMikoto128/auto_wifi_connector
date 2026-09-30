@@ -36,7 +36,9 @@ fn run_netsh(args: &[&str]) -> Result<String, String> {
 
 /// 从行中标签与值的固定分隔位置取值：`标签 : 值`。
 fn value_after_colon(line: &str) -> Option<&str> {
-    line.split_once(':').map(|(_, v)| v.trim()).filter(|v| !v.is_empty())
+    line.split_once(':')
+        .map(|(_, v)| v.trim())
+        .filter(|v| !v.is_empty())
 }
 
 /// 判断一行是否为 `SSID <n> : <名称>` 形式的网络起始行，返回名称。
@@ -69,13 +71,15 @@ pub fn parse_networks(output: &str) -> Vec<WifiNetwork> {
             }
             continue;
         }
-        let Some(current) = networks.last_mut() else { continue };
+        let Some(current) = networks.last_mut() else {
+            continue;
+        };
         let trimmed = line.trim();
         let is_signal = trimmed.starts_with("Signal") || trimmed.starts_with("信号");
         let is_auth = trimmed.starts_with("Authentication") || trimmed.starts_with("身份验证");
         if is_signal {
             if let Some(v) = value_after_colon(trimmed) {
-                if let Some(pct) = v.trim_end_matches('%').trim().parse::<u8>().ok() {
+                if let Ok(pct) = v.trim_end_matches('%').trim().parse::<u8>() {
                     current.signal = current.signal.max(pct);
                 }
             }
@@ -85,7 +89,7 @@ pub fn parse_networks(output: &str) -> Vec<WifiNetwork> {
             }
         }
     }
-    networks.sort_by(|a, b| b.signal.cmp(&a.signal));
+    networks.sort_by_key(|n| std::cmp::Reverse(n.signal));
     networks
 }
 
@@ -127,7 +131,7 @@ pub fn scan() -> Result<Vec<WifiNetwork>, String> {
         n.saved = profiles.iter().any(|p| p == &n.ssid);
         n.connected = connected.as_deref() == Some(n.ssid.as_str());
     }
-    networks.sort_by(|a, b| b.signal.cmp(&a.signal));
+    networks.sort_by_key(|n| std::cmp::Reverse(n.signal));
     Ok(networks)
 }
 

@@ -91,7 +91,7 @@ pub fn pick_candidates(networks: &[wifi::WifiNetwork]) -> Vec<Candidate> {
         .iter()
         .filter(|n| n.saved && !n.ssid.is_empty())
         .collect();
-    list.sort_by(|a, b| b.signal.cmp(&a.signal));
+    list.sort_by_key(|n| std::cmp::Reverse(n.signal));
     list.iter()
         .map(|n| Candidate {
             ssid: n.ssid.clone(),
@@ -130,7 +130,11 @@ fn is_enabled(shared: &Shared) -> bool {
 fn diag(message: String) {
     use std::io::Write;
     let path = std::env::temp_dir().join("awc-monitor-diag.log");
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
         let _ = writeln!(f, "[{:?}] {message}", std::time::SystemTime::now());
     }
 }
@@ -172,7 +176,11 @@ fn run_recovery(app: &AppHandle, shared: &Shared) -> bool {
         let networks = wifi::scan().unwrap_or_default();
         let candidates = pick_candidates(&networks);
         if candidates.is_empty() {
-            push_log(app, shared, format!("第 {round} 轮：无可连接的已保存网络，稍后重试"));
+            push_log(
+                app,
+                shared,
+                format!("第 {round} 轮：无可连接的已保存网络，稍后重试"),
+            );
             update(app, shared, |s| {
                 s.round = round;
                 s.candidates.clear();
@@ -187,7 +195,10 @@ fn run_recovery(app: &AppHandle, shared: &Shared) -> bool {
         push_log(
             app,
             shared,
-            format!("第 {round} 轮：发现 {} 个候选网络，开始依次尝试", candidates.len()),
+            format!(
+                "第 {round} 轮：发现 {} 个候选网络，开始依次尝试",
+                candidates.len()
+            ),
         );
         update(app, shared, |s| {
             s.round = round;
@@ -242,7 +253,11 @@ fn run_recovery(app: &AppHandle, shared: &Shared) -> bool {
             });
         }
 
-        push_log(app, shared, format!("第 {round} 轮未恢复网络，{ROUND_DELAY:?} 后开始下一轮"));
+        push_log(
+            app,
+            shared,
+            format!("第 {round} 轮未恢复网络，{ROUND_DELAY:?} 后开始下一轮"),
+        );
         if !sleep_while_enabled(shared, ROUND_DELAY) {
             return false;
         }

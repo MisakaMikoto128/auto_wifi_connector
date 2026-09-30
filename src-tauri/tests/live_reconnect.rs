@@ -12,7 +12,10 @@ use std::time::Duration;
 #[ignore]
 fn reconnect_after_disconnect() {
     let ssid = wifi::connected_ssid().expect("test requires a connected wifi network");
-    assert!(netcheck::is_online(), "test requires working internet before start");
+    assert!(
+        netcheck::is_online(),
+        "test requires working internet before start"
+    );
     println!("current ssid: {ssid}");
 
     wifi::disconnect().expect("disconnect failed");

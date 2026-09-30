@@ -1,5 +1,10 @@
 # Auto WiFi Connector
 
+[![CI](https://github.com/MisakaMikoto128/auto_wifi_connector/actions/workflows/ci.yml/badge.svg)](https://github.com/MisakaMikoto128/auto_wifi_connector/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/MisakaMikoto128/auto_wifi_connector)](https://github.com/MisakaMikoto128/auto_wifi_connector/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://misakamikoto128.github.io/auto_wifi_connector/)
+
 <p>
   <img src="docs/images/icon.png" width="96" align="right" alt="icon">
   一个 Windows 桌面程序，解决「WiFi 已连接但无法访问互联网」以及「WiFi 关联意外断开」的问题。
@@ -8,6 +13,9 @@
 </p>
 
 界面采用纽约报刊排版风格（衬线字体、纸米底色、分栏布局），使用 Rust + Tauri 2 实现，UI 为无构建步骤的静态 Web 页面。
+
+**下载**：从 [Releases](../../releases) 获取 Windows x64 压缩包，解压后直接运行，无需安装 Rust 环境。
+**项目页**：<https://misakamikoto128.github.io/auto_wifi_connector/>
 
 ## 界面
 
@@ -94,6 +102,14 @@ tests/         # UI 预览页（mock 数据）与验证截图
 | WIFI_LIST_INTERVAL | 6s | WiFi 列表刷新周期 |
 | ASSOCIATE_TIMEOUT | 12s | 单次连接等待关联完成的超时 |
 | ROUND_DELAY | 15s | 一轮候选全部失败后的等待 |
+
+## 发布
+
+推送 `v*` 形式的 tag 会触发 [Release 工作流](.github/workflows/release.yml)：自动构建 release 版本、打包并发布到 Releases。发布前请先更新 CHANGELOG.md 与 `src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 中的版本号。
+
+## 参与贡献
+
+见 [CONTRIBUTING.md](CONTRIBUTING.md)。提交前请在本地通过 `cargo fmt`、`cargo clippy --all-targets -- -D warnings` 与 `cargo test`（与 CI 一致）。变更历史见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## License
 
