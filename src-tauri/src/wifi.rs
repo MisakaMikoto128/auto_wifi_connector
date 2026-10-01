@@ -194,7 +194,9 @@ pub fn connect(ssid: &str) -> Result<(), String> {
     if ssid.contains('"') {
         return Err("ssid must not contain quotes".to_string());
     }
-    let out = run_netsh(&["connect", &format!("name={ssid}")])?;
+    // name 参数必须加引号，否则含空格的 SSID 会被 netsh 拆成多个参数
+    let name_arg = format!("name=\"{ssid}\"");
+    let out = run_netsh(&["connect", &name_arg])?;
     if out.contains("success") || out.contains("成功") {
         Ok(())
     } else {

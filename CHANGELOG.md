@@ -2,6 +2,18 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.4] - 2026-10-01
+
+### 修复
+
+- SSID 含空格时连接失败：connect 的 name 参数补充引号，避免被 netsh 拆成多个参数
+- 用户在界面关闭开机自启后，重启程序会被重新开启：改为仅首次运行时默认注册，之后尊重用户选择
+
+### 新增
+
+- 单实例运行：重复启动时聚焦已有窗口，不再产生第二个进程
+- 托盘图标左键单击显示窗口
+
 ## [0.2.3] - 2026-10-01
 
 ### 修复
@@ -60,6 +72,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.4]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.0...v0.2.1

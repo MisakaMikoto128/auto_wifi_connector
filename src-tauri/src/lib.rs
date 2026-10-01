@@ -4,7 +4,7 @@ pub mod wifi;
 
 use monitor::{MonitorSnapshot, Shared};
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
@@ -50,9 +50,36 @@ fn autostart_set(app: AppHandle, enabled: bool) -> bool {
     launcher.is_enabled().unwrap_or(false)
 }
 
+/// 显示并聚焦主窗口。
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// 仅首次运行时默认开启开机自启，之后尊重用户在界面中的开关选择。
+fn enable_autostart_on_first_run(app: &AppHandle) {
+    let Ok(dir) = app.path().app_config_dir() else {
+        return;
+    };
+    let flag = dir.join("initialized");
+    if flag.exists() {
+        return;
+    }
+    let _ = app.autolaunch().enable();
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(flag, b"");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // 第二个实例启动时聚焦已有窗口，不重复运行
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .manage(monitor::new_shared())
         .invoke_handler(tauri::generate_handler![
@@ -74,14 +101,19 @@ pub fn run() {
                 .tooltip("Auto WiFi Connector")
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => app.exit(0),
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    "show" => show_main_window(app),
                     _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // 左键单击托盘图标显示窗口
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
                 })
                 .build(app)?;
 
@@ -95,8 +127,7 @@ pub fn run() {
                 }
             });
 
-            // 默认注册开机自启，可在界面中关闭
-            let _ = app.autolaunch().enable();
+            enable_autostart_on_first_run(app.handle());
 
             monitor::spawn(app.handle().clone(), app.state::<Shared>().inner().clone());
             Ok(())
