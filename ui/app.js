@@ -137,6 +137,7 @@ function renderMonitor(snapshot) {
   for (const [name, el] of Object.entries(els.views)) {
     el.classList.toggle("hidden", name !== view);
   }
+  waveSetState(view, snapshot.current >= 0);
 
   if (view === "recovering") {
     els.roundLine.textContent = `第 ${snapshot.round} 轮尝试 · 共 ${snapshot.candidates.length} 个候选`;
@@ -187,6 +188,76 @@ function renderLog(lines) {
   els.log.scrollTop = els.log.scrollHeight;
 }
 
+/* ---------- 连通性示波器 ----------
+ * 波形振幅映射连通性：在线为满幅正弦波，离线塌缩为噪声抖动，
+ * 尝试连接时振幅重建。颜色：在线墨色，恢复中红色。
+ */
+
+const wave = {
+  canvas: $("wave"),
+  amp: 0,        // 当前振幅（平滑过渡）
+  targetAmp: 0,  // 目标振幅，由状态驱动
+  color: "#1a1a1a",
+  phase: 0,
+};
+
+function waveSetState(view, currentConnecting) {
+  if (view === "online") {
+    wave.targetAmp = 1;
+    wave.color = "#1a1a1a";
+  } else if (view === "recovering") {
+    // 有候选正在连接时振幅尝试重建，否则塌缩
+    wave.targetAmp = currentConnecting ? 0.45 : 0.08;
+    wave.color = "#8f1d1d";
+  } else {
+    wave.targetAmp = 0.15;
+    wave.color = "#8a8378";
+  }
+}
+
+function waveResize() {
+  const c = wave.canvas;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = Math.max(1, Math.round(rect.width * dpr));
+  c.height = Math.max(1, Math.round(rect.height * dpr));
+}
+
+function waveFrame() {
+  const c = wave.canvas;
+  const ctx = c.getContext("2d");
+  const w = c.width;
+  const h = c.height;
+  const mid = h / 2;
+  wave.amp += (wave.targetAmp - wave.amp) * 0.04;
+  wave.phase += 0.09;
+
+  ctx.clearRect(0, 0, w, h);
+  // 中线
+  ctx.strokeStyle = "rgba(138,131,120,0.35)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  ctx.lineTo(w, mid);
+  ctx.stroke();
+  // 波形
+  ctx.strokeStyle = wave.color;
+  ctx.lineWidth = Math.max(1.5, (window.devicePixelRatio || 1) * 1.2);
+  ctx.beginPath();
+  const maxAmp = mid - 6;
+  for (let x = 0; x <= w; x += 2) {
+    const carrier = Math.sin(x * 0.045 - wave.phase) * wave.amp * maxAmp;
+    const noise = (Math.random() - 0.5) * (1 - wave.amp) * 7;
+    const y = mid + carrier + noise;
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  requestAnimationFrame(waveFrame);
+}
+
+window.addEventListener("resize", waveResize);
+
 /* ---------- 工具 ---------- */
 
 function escapeHtml(text) {
@@ -198,6 +269,9 @@ function escapeHtml(text) {
 /* ---------- 初始化 ---------- */
 
 async function init() {
+  waveResize();
+  requestAnimationFrame(waveFrame);
+
   await listen("wifi-list", (event) => renderWifiList(event.payload));
   await listen("monitor", (event) => renderMonitor(event.payload));
 

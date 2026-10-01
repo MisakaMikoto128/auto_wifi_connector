@@ -61,11 +61,11 @@
 
           <!-- 在线 -->
           <div class="stage-view hidden" id="view-online">
-            <div class="ripple-box">
-              <span class="ripple r1"></span>
-              <span class="ripple r2"></span>
-              <span class="ripple r3"></span>
-              <span class="ripple-core"></span>
+            <div class="emitter">
+              <span class="arc a1"></span>
+              <span class="arc a2"></span>
+              <span class="arc a3"></span>
+              <span class="emitter-dot"></span>
             </div>
             <div class="big-word">ONLINE</div>
             <div class="big-cn">网络在线</div>
@@ -81,6 +81,9 @@
             <div class="round-line" id="round-line">第 1 轮尝试</div>
             <ul class="attempt-list" id="attempt-list"></ul>
           </div>
+
+          <!-- 连通性示波器：振幅映射连通性，贯穿所有状态 -->
+          <canvas class="wave" id="wave"></canvas>
         </div>
 
         <div class="log-box">

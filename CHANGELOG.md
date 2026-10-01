@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.5] - 2026-10-01
+
+### 变更
+
+- 状态动画改版为贴近物理现实的形态：在线状态为发射点向上扩散的弧形辐射波（WiFi 信号的物理形态）；舞台底部新增连通性示波器，波形振幅映射连通性——在线满幅正弦波、离线塌缩为噪声抖动、尝试连接时振幅重建，恢复中波形为红色
+
 ## [0.2.4] - 2026-10-01
 
 ### 修复
@@ -72,6 +78,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.5]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.1...v0.2.2
