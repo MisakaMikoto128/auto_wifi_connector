@@ -137,7 +137,7 @@ function renderMonitor(snapshot) {
   for (const [name, el] of Object.entries(els.views)) {
     el.classList.toggle("hidden", name !== view);
   }
-  waveSetState(view, snapshot.current >= 0);
+  waveSetState(view, snapshot);
 
   if (view === "recovering") {
     els.roundLine.textContent = `第 ${snapshot.round} 轮尝试 · 共 ${snapshot.candidates.length} 个候选`;
@@ -189,27 +189,44 @@ function renderLog(lines) {
 }
 
 /* ---------- 连通性示波器 ----------
- * 波形振幅映射连通性：在线为满幅正弦波，离线塌缩为噪声抖动，
- * 尝试连接时振幅重建。颜色：在线墨色，恢复中红色。
+ * 波形映射连通性，颜色：在线墨色，恢复中红色，待命灰色。
+ * 在线：ASK 幅度调制——比特序列编码为载波上的高斯波包串；
+ * 恢复中：高斯波包自左向右传播（连接请求），成功锁定为连续载波，失败衰减为噪声；
+ * 待命：微幅噪声。
  */
 
 const wave = {
   canvas: $("wave"),
-  amp: 0,        // 当前振幅（平滑过渡）
-  targetAmp: 0,  // 目标振幅，由状态驱动
+  mode: "idle", // idle | ask | packet | locked | decay
+  amp: 0,       // 当前振幅（平滑过渡）
+  targetAmp: 0,
   color: "#1a1a1a",
   phase: 0,
+  t: 0,
+  packetX: -60, // 波包中心横坐标
+  bits: [1, 0, 1, 1, 0, 1, 0, 0, 1, 0], // ASK 编码的比特序列，循环发送
 };
 
-function waveSetState(view, currentConnecting) {
+function waveSetState(view, snapshot) {
   if (view === "online") {
+    wave.mode = "ask";
     wave.targetAmp = 1;
     wave.color = "#1a1a1a";
   } else if (view === "recovering") {
-    // 有候选正在连接时振幅尝试重建，否则塌缩
-    wave.targetAmp = currentConnecting ? 0.45 : 0.08;
     wave.color = "#8f1d1d";
+    if (snapshot.current >= 0) {
+      wave.mode = "packet";
+      wave.targetAmp = 0.55;
+    } else if (snapshot.candidates.some((c) => c.status === "success")) {
+      wave.mode = "locked";
+      wave.targetAmp = 1;
+      wave.color = "#1a1a1a";
+    } else {
+      wave.mode = "decay";
+      wave.targetAmp = 0.08;
+    }
   } else {
+    wave.mode = "idle";
     wave.targetAmp = 0.15;
     wave.color = "#8a8378";
   }
@@ -223,14 +240,42 @@ function waveResize() {
   c.height = Math.max(1, Math.round(rect.height * dpr));
 }
 
+/* ASK 包络：比特序列编码为比特位中心的高斯凸起，比特 0 处静默 */
+function askEnvelope(x, w) {
+  const bitW = 44 * (window.devicePixelRatio || 1);
+  const scroll = (wave.t * 1.6) % bitW;
+  const idx = Math.floor((x + scroll) / bitW) % wave.bits.length;
+  const bit = wave.bits[(idx + wave.bits.length) % wave.bits.length];
+  if (!bit) return 0.06;
+  const center = Math.floor((x + scroll) / bitW) * bitW - scroll + bitW / 2;
+  const d = (x - center) / (bitW * 0.32);
+  return 0.25 + 0.75 * Math.exp(-d * d);
+}
+
+/* 高斯调制波包：中心 px，宽度随传播扩散（色散） */
+function packetEnvelope(x, px) {
+  const sigma = 26 + px * 0.02;
+  const d = (x - px) / sigma;
+  return Math.exp(-d * d);
+}
+
 function waveFrame() {
   const c = wave.canvas;
   const ctx = c.getContext("2d");
   const w = c.width;
   const h = c.height;
   const mid = h / 2;
+  const dpr = window.devicePixelRatio || 1;
   wave.amp += (wave.targetAmp - wave.amp) * 0.04;
   wave.phase += 0.09;
+  wave.t += 1;
+
+  if (wave.mode === "packet") {
+    wave.packetX += w * 0.011;
+    if (wave.packetX > w + 60 * dpr) wave.packetX = -60 * dpr;
+  } else if (wave.mode === "decay") {
+    wave.packetX += (w * 0.45 - wave.packetX) * 0.02; // 波包停在中途并衰减
+  }
 
   ctx.clearRect(0, 0, w, h);
   // 中线
@@ -240,20 +285,114 @@ function waveFrame() {
   ctx.moveTo(0, mid);
   ctx.lineTo(w, mid);
   ctx.stroke();
+
+  const maxAmp = mid - 6;
+  const noiseLevel = (1 - wave.amp) * 7;
+
   // 波形
   ctx.strokeStyle = wave.color;
-  ctx.lineWidth = Math.max(1.5, (window.devicePixelRatio || 1) * 1.2);
+  ctx.lineWidth = Math.max(1.5, dpr * 1.2);
   ctx.beginPath();
-  const maxAmp = mid - 6;
   for (let x = 0; x <= w; x += 2) {
-    const carrier = Math.sin(x * 0.045 - wave.phase) * wave.amp * maxAmp;
-    const noise = (Math.random() - 0.5) * (1 - wave.amp) * 7;
-    const y = mid + carrier + noise;
+    const carrier = Math.sin(x * 0.045 - wave.phase);
+    let envelope;
+    if (wave.mode === "ask") envelope = askEnvelope(x, w);
+    else if (wave.mode === "packet" || wave.mode === "decay") envelope = packetEnvelope(x, wave.packetX);
+    else envelope = 1;
+    const noise = (Math.random() - 0.5) * noiseLevel;
+    const y = mid + carrier * envelope * wave.amp * maxAmp + noise;
     if (x === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.stroke();
+
+  // ASK 模式：底部比特刻度，展示编码分布
+  if (wave.mode === "ask") {
+    const bitW = 44 * dpr;
+    const scroll = (wave.t * 1.6) % bitW;
+    ctx.strokeStyle = "rgba(26,26,26,0.5)";
+    ctx.lineWidth = 1;
+    for (let i = -1; i * bitW < w + bitW; i++) {
+      const bx = i * bitW - scroll + bitW / 2;
+      const bit = wave.bits[((i % wave.bits.length) + wave.bits.length) % wave.bits.length];
+      const tickH = bit ? 8 * dpr : 3 * dpr;
+      ctx.beginPath();
+      ctx.moveTo(bx, h - 2);
+      ctx.lineTo(bx, h - 2 - tickH);
+      ctx.stroke();
+    }
+  }
   requestAnimationFrame(waveFrame);
+}
+
+/* ---------- 高斯三维分布曲面（待命） ----------
+ * z = exp(-(x²+y²)/(2σ²)) 的线框曲面，等角投影，
+ * σ 呼吸起伏，曲面绕竖直轴缓慢旋转。
+ */
+
+const gauss = { canvas: $("gauss3d"), t: 0 };
+
+function gaussFrame() {
+  const c = gauss.canvas;
+  if (!c) return;
+  // 仅待命视图可见时绘制
+  if (els.views.standby.classList.contains("hidden")) {
+    requestAnimationFrame(gaussFrame);
+    return;
+  }
+  const dpr = window.devicePixelRatio || 1;
+  const rect = c.getBoundingClientRect();
+  c.width = Math.max(1, Math.round(rect.width * dpr));
+  c.height = Math.max(1, Math.round(rect.height * dpr));
+  const ctx = c.getContext("2d");
+  const w = c.width;
+  const h = c.height;
+  gauss.t += 0.008;
+
+  const sigma = 0.9 + 0.3 * Math.sin(gauss.t * 1.4); // 呼吸
+  const rot = gauss.t * 0.35;                         // 绕竖直轴缓转
+  const n = 22;                                       // 网格密度
+  const range = 2.4;
+  const scale = w / (range * 3.4);
+  const zScale = h * 0.52;
+  const cx = w / 2;
+  const cy = h * 0.62;
+
+  const project = (x, y, z) => {
+    const rx = x * Math.cos(rot) - y * Math.sin(rot);
+    const ry = x * Math.sin(rot) + y * Math.cos(rot);
+    return [cx + (rx - ry) * 0.866 * scale, cy + (rx + ry) * 0.30 * scale - z * zScale];
+  };
+  const z = (x, y) => Math.exp(-(x * x + y * y) / (2 * sigma * sigma));
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(138,131,120,0.75)";
+  ctx.lineWidth = 1;
+  // 沿 x 方向的网格线
+  for (let j = 0; j <= n; j++) {
+    const y = -range + (2 * range * j) / n;
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const x = -range + (2 * range * i) / n;
+      const [sx, sy] = project(x, y, z(x, y));
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+  // 沿 y 方向的网格线
+  for (let i = 0; i <= n; i++) {
+    const x = -range + (2 * range * i) / n;
+    ctx.beginPath();
+    for (let j = 0; j <= n; j++) {
+      const y = -range + (2 * range * j) / n;
+      const [sx, sy] = project(x, y, z(x, y));
+      if (j === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+  }
+  requestAnimationFrame(gaussFrame);
 }
 
 window.addEventListener("resize", waveResize);
@@ -271,6 +410,7 @@ function escapeHtml(text) {
 async function init() {
   waveResize();
   requestAnimationFrame(waveFrame);
+  requestAnimationFrame(gaussFrame);
 
   await listen("wifi-list", (event) => renderWifiList(event.payload));
   await listen("monitor", (event) => renderMonitor(event.payload));

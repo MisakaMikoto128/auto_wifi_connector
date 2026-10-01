@@ -566,3 +566,12 @@ body {
 ::-webkit-scrollbar-track { background: var(--paper-dark); }
 ::-webkit-scrollbar-thumb { background: #b7ad99; border: 2px solid var(--paper-dark); }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+
+/* ---------- 高斯三维分布曲面（待命） ---------- */
+
+.gauss3d {
+  width: 100%;
+  max-width: 440px;
+  height: 210px;
+  margin-bottom: 10px;
+}

@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.6] - 2026-10-01
+
+### 新增
+
+- 状态动画增强为物理信号可视化：待命状态显示高斯三维分布线框曲面（呼吸起伏、缓慢旋转）；在线状态载波升级为 ASK 幅度调制，比特序列编码为高斯波包串并附比特刻度；恢复中显示高斯调制波包自左向右传播，成功锁定为连续载波，失败衰减为噪声
+
 ## [0.2.5] - 2026-10-01
 
 ### 变更
@@ -78,6 +84,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.6]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.2...v0.2.3
