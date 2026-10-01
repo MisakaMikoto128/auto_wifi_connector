@@ -2,6 +2,13 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.2] - 2026-10-01
+
+### 新增
+
+- Release 附带 SHA256 校验文件
+- README 与项目页增加安装说明：Windows SmartScreen 提示的处理方法与完整性校验
+
 ## [0.2.1] - 2026-09-30
 
 ### 修复
@@ -47,6 +54,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/bea81fa...v0.2.0
 

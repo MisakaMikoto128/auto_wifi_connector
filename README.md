@@ -17,6 +17,17 @@
 **下载**：从 [Releases](../../releases) 获取 Windows x64 压缩包，解压后直接运行，无需安装 Rust 环境。
 **项目页**：<https://misakamikoto128.github.io/auto_wifi_connector/>
 
+## 安装与 Windows SmartScreen 说明
+
+程序未购买代码签名证书（多数开源项目相同，例如 cc-switch 的 exe 同样未签名）。从网络下载的未签名 exe 首次运行时，Windows 可能显示 SmartScreen 提示「Windows 已保护你的电脑」，点击「更多信息 → 仍要运行」即可。
+
+为确认下载文件未被篡改，每个 Release 附带 `.sha256` 校验文件，校验方法：
+
+```sh
+certutil -hashfile auto-wifi-connector-vX.Y.Z-windows-x64.zip SHA256
+# 输出应与 .sha256 文件中的值一致
+```
+
 ## 界面
 
 ![在线状态](docs/images/screenshot-online.png)

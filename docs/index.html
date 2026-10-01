@@ -151,7 +151,16 @@
       <li>开启「自动断网重连轮询」开关，程序即开始监控；关闭窗口不影响运行</li>
       <li>只有「已存密码」的网络才会被用于重连——请事先在 Windows 中连接并保存常用 WiFi 的密码</li>
       <li>「开机自启」默认开启，登录后自动在托盘待命</li>
+      <li>WiFi 无线电被关闭（飞行模式等）时，程序会自动尝试打开</li>
     </ul>
+
+    <h2 id="install">安装 <span class="en">Install</span></h2>
+    <p>
+      从 <a href="https://github.com/MisakaMikoto128/auto_wifi_connector/releases">Releases</a>
+      下载 zip 解压即用。程序未购买代码签名证书（多数开源项目相同），首次运行时 Windows 可能显示
+      SmartScreen 提示「Windows 已保护你的电脑」，点击「更多信息 → 仍要运行」即可。
+    </p>
+    <p>每个 Release 附带 <code>.sha256</code> 校验文件，可用 <code>certutil -hashfile 文件名 SHA256</code> 核对下载完整性。</p>
 
     <h2 id="download">构建 <span class="en">Build</span></h2>
     <p>环境要求：Rust 1.77+、Windows 10/11。</p>
