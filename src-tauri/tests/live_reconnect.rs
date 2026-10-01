@@ -57,3 +57,10 @@ fn scan_prints_networks() {
         println!("ssid={:?} signal={} saved={}", n.ssid, n.signal, n.saved);
     }
 }
+
+/// 真实连通性探测：当前网络可用，应判定在线（含 portal 欺骗防御逻辑）。
+#[test]
+#[ignore]
+fn real_probe_is_online() {
+    assert!(netcheck::is_online(), "should be online");
+}

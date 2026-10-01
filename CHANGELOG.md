@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.3] - 2026-10-01
+
+### 修复
+
+- 内网 captive portal 环境下误判在线：portal 劫持 HTTP 请求返回 200 登录页，原探测逻辑仅凭状态码判定会被欺骗。204 端点要求状态码恰为 204，200 端点额外校验响应正文片段；探测端点调整为 miui/vivo/华为三个 204 与微软、苹果两个带正文校验的 200
+
 ## [0.2.2] - 2026-10-01
 
 ### 新增
@@ -54,6 +60,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.2.3]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/bea81fa...v0.2.0
