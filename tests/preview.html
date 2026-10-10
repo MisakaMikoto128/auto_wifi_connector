@@ -23,7 +23,7 @@
 
     <main class="columns">
       <section class="col-left">
-        <h2 class="col-title">网络名录 <span class="col-title-en">Network Directory</span></h2>
+        <h2 class="col-title">网络名录 <span class="col-title-en">Network Directory</span><button class="refresh-btn" id="refresh-btn" title="重新扫描">↻</button></h2>
         <div class="status-strip" id="status-strip">
           <span class="dot" id="status-dot"></span><span id="status-text">正在扫描…</span>
         </div>
@@ -138,16 +138,41 @@
       },
     };
 
+    const MOCK_INFO = {
+      ssid: "CMCC-u2c6-5G", band: "5 GHz", channel: 149,
+      receiveRateMbps: 866.7, transmitRateMbps: 866.7,
+      authentication: "WPA2-Personal", signal: 79,
+    };
+
+    // 模拟后端的周期性列表推送：信号轻微波动，用于验证刷新不闪烁
+    function fluctuatingNetworks() {
+      return MOCK_NETWORKS.map((n) => ({
+        ...n,
+        signal: Math.max(5, Math.min(98, n.signal + Math.round((Math.random() - 0.5) * 6))),
+      })).sort((a, b) => b.signal - a.signal);
+    }
+
+    const listeners = {};
+    setInterval(() => {
+      listeners["wifi-list"]?.({ payload: fluctuatingNetworks() });
+    }, 3000);
+
     window.__TAURI__ = {
       core: {
         invoke: async (cmd) => {
-          if (cmd === "get_wifi_list") return MOCK_NETWORKS;
+          if (cmd === "get_wifi_list") return fluctuatingNetworks();
           if (cmd === "get_snapshot") return MOCK_SNAPSHOTS[state];
           if (cmd === "autostart_is_enabled") return true;
+          if (cmd === "get_connection_info") return MOCK_INFO;
+          if (cmd === "connect_wifi") return null;
           return null;
         },
       },
-      event: { listen: async () => {} },
+      event: {
+        listen: async (name, cb) => {
+          listeners[name] = cb;
+        },
+      },
     };
   </script>
   <script src="../ui/app.js"></script>

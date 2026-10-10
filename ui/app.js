@@ -61,7 +61,10 @@ els.autostartSwitch.addEventListener("click", async () => {
   setSwitch(els.autostartSwitch, actual);
 });
 
-/* ---------- WiFi 列表 ---------- */
+/* ---------- WiFi 列表 ----------
+ * 以 SSID 为键复用行元素：刷新只更新变化的字段，
+ * 不整体重建列表，避免周期性刷新造成的闪烁。
+ */
 
 function signalLevel(signal) {
   if (signal >= 75) return 4;
@@ -70,45 +73,122 @@ function signalLevel(signal) {
   return 1;
 }
 
+function wifiRowHtml(net, i) {
+  const level = signalLevel(net.signal);
+  const bars = Array.from({ length: 4 }, (_, k) => `<i class="${k < level ? "on" : ""}"></i>`).join("");
+  let badges = "";
+  if (net.saved) {
+    badges += `<span class="badge saved">已存密码</span>`;
+    if (!net.connected) badges += `<button class="connect-btn" data-ssid="${escapeHtml(net.ssid)}">连接</button>`;
+  } else {
+    badges += `<span class="badge unsaved">未存密码</span>`;
+  }
+  if (!net.secured) badges += `<span class="badge open-net">开放</span>`;
+  return `
+    <span class="idx">${i + 1}.</span>
+    <span class="ssid">${escapeHtml(net.ssid)}</span>
+    <span class="badges">${badges}</span>
+    <span class="spacer"></span>
+    <span class="signal-bars">${bars}</span>
+    <span class="pct">${net.signal}%</span>`;
+}
+
 function renderWifiList(networks) {
-  els.wifiList.innerHTML = "";
   if (networks.length === 0) {
+    els.wifiList.replaceChildren();
     const li = document.createElement("li");
     li.className = "wifi-row";
     li.innerHTML = `<span class="ssid" style="font-weight:400;color:var(--ink-faint)">未扫描到网络</span>`;
     els.wifiList.appendChild(li);
+    setStatus("offline", "未连接到任何网络");
     return;
   }
+
+  const existing = new Map();
+  for (const row of els.wifiList.children) {
+    if (row.dataset.ssid) existing.set(row.dataset.ssid, row);
+  }
+
+  const rows = [];
   networks.forEach((net, i) => {
-    const li = document.createElement("li");
-    li.className = "wifi-row" + (net.connected ? " connected" : "");
-    li.style.animationDelay = `${Math.min(i * 30, 300)}ms`;
-
-    const level = signalLevel(net.signal);
-    const bars = Array.from({ length: 4 }, (_, k) => `<i class="${k < level ? "on" : ""}"></i>`).join("");
-
-    let badges = "";
-    if (net.saved) badges += `<span class="badge saved">已存密码</span>`;
-    else badges += `<span class="badge unsaved">未存密码</span>`;
-    if (!net.secured) badges += `<span class="badge open-net">开放</span>`;
-
-    li.innerHTML = `
-      <span class="idx">${i + 1}.</span>
-      <span class="ssid">${escapeHtml(net.ssid)}</span>
-      ${badges}
-      <span class="spacer"></span>
-      <span class="signal-bars">${bars}</span>
-      <span class="pct">${net.signal}%</span>`;
-    els.wifiList.appendChild(li);
+    let li = existing.get(net.ssid);
+    if (li) {
+      // 复用已有行：仅更新内容，不播放进入动画
+      li.className = "wifi-row" + (net.connected ? " connected" : "");
+      li.innerHTML = wifiRowHtml(net, i);
+    } else {
+      li = document.createElement("li");
+      li.dataset.ssid = net.ssid;
+      li.className = "wifi-row row-new" + (net.connected ? " connected" : "");
+      li.style.animationDelay = `${Math.min(i * 30, 300)}ms`;
+      li.innerHTML = wifiRowHtml(net, i);
+    }
+    rows.push(li);
   });
+  // replaceChildren 重排既有节点而不重建，已存在的行不触发闪烁
+  els.wifiList.replaceChildren(...rows);
 
   const connected = networks.find((n) => n.connected);
   if (connected) {
     setStatus("online", `已连接：${connected.ssid}`);
+    refreshConnectionInfo();
   } else {
     setStatus("offline", "未连接到任何网络");
   }
 }
+
+/* ---------- 行内手动连接 ---------- */
+
+els.wifiList.addEventListener("click", async (event) => {
+  const btn = event.target.closest(".connect-btn");
+  if (!btn) return;
+  const ssid = btn.dataset.ssid;
+  btn.disabled = true;
+  btn.textContent = "连接中…";
+  btn.closest(".wifi-row")?.classList.add("connecting-flash");
+  try {
+    await invoke("connect_wifi", { ssid });
+  } catch (e) {
+    setStatus("offline", `连接 ${ssid} 失败：${e}`);
+  }
+  // 连接结果由周期刷新的列表自然呈现；延时后恢复按钮状态
+  setTimeout(() => {
+    btn.closest(".wifi-row")?.classList.remove("connecting-flash");
+  }, 4000);
+});
+
+/* ---------- 手动刷新 ---------- */
+
+$("refresh-btn").addEventListener("click", async (event) => {
+  const btn = event.currentTarget;
+  btn.classList.remove("spin");
+  void btn.offsetWidth; // 重新触发动画
+  btn.classList.add("spin");
+  try {
+    const networks = await invoke("get_wifi_list");
+    renderWifiList(networks);
+  } catch (e) {
+    setStatus("offline", `扫描失败：${e}`);
+  }
+});
+
+/* ---------- 当前连接详情 ---------- */
+
+async function refreshConnectionInfo() {
+  try {
+    const info = await invoke("get_connection_info");
+    if (info) {
+      const rate = Math.max(info.receiveRateMbps, info.transmitRateMbps);
+      setStatus(
+        "online",
+        `已连接：${info.ssid} · ${info.band} · 信道 ${info.channel} · ${rate} Mbps`
+      );
+    }
+  } catch {
+    /* 详情获取失败时保留基础状态文本 */
+  }
+}
+setInterval(refreshConnectionInfo, 6000);
 
 function setStatus(kind, text) {
   els.statusDot.className = "dot " + kind;

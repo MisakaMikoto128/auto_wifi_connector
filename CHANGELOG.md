@@ -2,6 +2,19 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-10-10
+
+### 新增
+
+- WiFi 名录：行内「连接」按钮手动切换到已存密码的网络；标题行刷新按钮手动重扫；状态条显示当前连接的频段、信道与速率
+- 程序首次运行时自动移除 exe 的网络来源标记（MOTW），开机自启不再出现「无法验证发布者」的 Windows 授权框
+- Release 附 SHA256 校验文件（自 0.2.2 起，本次文档正式说明）
+
+### 修复
+
+- 开机自启在版本升级后仍指向老程序：自启已开启时每次启动重新注册为当前 exe 路径；用户在界面关闭过自启则不覆盖
+- WiFi 列表周期刷新整体重建导致的闪烁：改为以 SSID 为键复用行元素，仅更新变化字段，进入动画只对新出现的行播放
+
 ## [0.2.6] - 2026-10-01
 
 ### 新增
@@ -84,6 +97,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.3.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.3...v0.2.4

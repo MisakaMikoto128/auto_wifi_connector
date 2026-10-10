@@ -189,6 +189,58 @@ pub fn connected_ssid() -> Option<String> {
     parse_connected_ssid(&run_netsh(&["show", "interfaces"]).ok()?)
 }
 
+/// 当前连接的详细信息。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionInfo {
+    pub ssid: String,
+    pub band: String,
+    pub channel: u32,
+    pub receive_rate_mbps: f32,
+    pub transmit_rate_mbps: f32,
+    pub authentication: String,
+    pub signal: u8,
+}
+
+/// 解析 `netsh wlan show interfaces` 输出的连接详情。未连接时返回 None。
+pub fn parse_connection_info(output: &str) -> Option<ConnectionInfo> {
+    let ssid = parse_connected_ssid(output)?;
+    let mut info = ConnectionInfo {
+        ssid,
+        band: String::new(),
+        channel: 0,
+        receive_rate_mbps: 0.0,
+        transmit_rate_mbps: 0.0,
+        authentication: String::new(),
+        signal: 0,
+    };
+    for line in output.lines() {
+        let t = line.trim();
+        let Some(value) = value_after_colon(t) else {
+            continue;
+        };
+        if t.starts_with("Band") || t.starts_with("频段") {
+            info.band = value.to_string();
+        } else if t.starts_with("Channel") || t.starts_with("频道") || t.starts_with("信道") {
+            info.channel = value.parse().unwrap_or(0);
+        } else if t.starts_with("Receive rate") || t.starts_with("接收速率") {
+            info.receive_rate_mbps = value.parse().unwrap_or(0.0);
+        } else if t.starts_with("Transmit rate") || t.starts_with("传输速率") {
+            info.transmit_rate_mbps = value.parse().unwrap_or(0.0);
+        } else if t.starts_with("Authentication") || t.starts_with("身份验证") {
+            info.authentication = value.to_string();
+        } else if t.starts_with("Signal") || t.starts_with("信号") {
+            info.signal = value.trim_end_matches('%').trim().parse().unwrap_or(0);
+        }
+    }
+    Some(info)
+}
+
+/// 当前连接详情；未连接时返回 None。
+pub fn connection_info() -> Option<ConnectionInfo> {
+    parse_connection_info(&run_netsh(&["show", "interfaces"]).ok()?)
+}
+
 /// 发起连接。返回 Ok 仅表示 netsh 接受了请求，不代表已关联成功。
 pub fn connect(ssid: &str) -> Result<(), String> {
     if ssid.contains('"') {
@@ -417,6 +469,18 @@ There is 1 interface on the system:
     fn parses_chinese_profiles() {
         let profiles = parse_profiles(PROFILES_ZH);
         assert_eq!(profiles, vec!["CMCC-u2c6-5G", "抛瓦拉满_5G."]);
+    }
+
+    #[test]
+    fn parses_connection_info_fields() {
+        let info = parse_connection_info(INTERFACES_CONNECTED).expect("should parse");
+        assert_eq!(info.ssid, "CMCC-u2c6-5G");
+        assert_eq!(info.signal, 79);
+    }
+
+    #[test]
+    fn connection_info_none_when_disconnected() {
+        assert!(parse_connection_info(INTERFACES_DISCONNECTED).is_none());
     }
 
     #[test]

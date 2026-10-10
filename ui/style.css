@@ -153,6 +153,10 @@ body {
   gap: 10px;
   padding: 8px 6px;
   border-bottom: 1px dotted #b7ad99;
+}
+
+/* 仅新出现的行播放进入动画；刷新重排既有行时不播放，避免闪烁 */
+.wifi-row.row-new {
   animation: row-in 0.35s ease both;
 }
 
@@ -575,3 +579,50 @@ body {
   height: 210px;
   margin-bottom: 10px;
 }
+
+/* ---------- 名录刷新按钮与行内连接按钮 ---------- */
+
+.refresh-btn {
+  float: right;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 8px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.refresh-btn:hover { background: var(--ink); color: var(--paper); }
+
+.refresh-btn.spin { animation: refresh-spin 0.7s ease; }
+
+@keyframes refresh-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.connect-btn {
+  font-family: var(--serif);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 1px 7px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  flex: none;
+  transform: translateY(-1px);
+}
+
+.connect-btn:hover { background: var(--ink); color: var(--paper); }
+
+.connect-btn:disabled {
+  border-color: var(--ink-faint);
+  color: var(--ink-faint);
+  cursor: default;
+  background: transparent;
+}
+
+.wifi-row.connecting-flash { background: var(--paper-dark); }
