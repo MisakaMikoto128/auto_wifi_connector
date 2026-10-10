@@ -295,7 +295,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 18px 18px 72px; /* 底部留给示波器 */
+  padding: 18px;
   animation: view-in 0.4s ease both;
 }
 
@@ -362,17 +362,6 @@ body {
   100% { transform: scale(1); opacity: 0; }
 }
 
-/* 连通性示波器 */
-
-.wave {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 64px;
-  pointer-events: none;
-}
 
 /* 断网恢复 */
 
@@ -571,14 +560,6 @@ body {
 ::-webkit-scrollbar-thumb { background: #b7ad99; border: 2px solid var(--paper-dark); }
 ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
 
-/* ---------- 高斯三维分布曲面（待命） ---------- */
-
-.gauss3d {
-  width: 100%;
-  max-width: 440px;
-  height: 210px;
-  margin-bottom: 10px;
-}
 
 /* ---------- 名录刷新按钮与行内连接按钮 ---------- */
 
@@ -626,3 +607,8 @@ body {
 }
 
 .wifi-row.connecting-flash { background: var(--paper-dark); }
+
+/* ---------- 页脚链接 ---------- */
+
+.colophon a { color: var(--ink); }
+.colophon a:hover { background: var(--ink); color: var(--paper); }

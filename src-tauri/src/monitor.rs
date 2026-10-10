@@ -16,6 +16,10 @@ use tauri::{AppHandle, Emitter};
 const CHECK_INTERVAL: Duration = Duration::from_secs(10);
 /// WiFi 列表推送周期。
 const WIFI_LIST_INTERVAL: Duration = Duration::from_secs(6);
+/// 触发主动扫描后的等待时长。
+const ACTIVE_SCAN_WAIT: Duration = Duration::from_secs(2);
+/// 每多少次列表推送触发一次主动扫描（约 30 秒一次）。
+const ACTIVE_SCAN_EVERY: u32 = 5;
 /// 单次连接后等待关联完成的超时。
 const ASSOCIATE_TIMEOUT: Duration = Duration::from_secs(12);
 /// 一轮候选全部失败后的等待时长。
@@ -284,8 +288,22 @@ pub fn spawn(app: AppHandle, shared: Shared) {
     std::thread::spawn(move || {
         let mut last_check = Instant::now() - CHECK_INTERVAL;
         let mut last_wifi_list = Instant::now() - WIFI_LIST_INTERVAL;
+        let mut wifi_scan_tick: u32 = 0;
         loop {
             std::thread::sleep(Duration::from_millis(500));
+
+            // WiFi 列表刷新独立于自动重连开关，始终周期执行。
+            // 被动扫描缓存会滞后（网卡关联后只剩当前网络），周期触发主动扫描。
+            if last_wifi_list.elapsed() >= WIFI_LIST_INTERVAL {
+                last_wifi_list = Instant::now();
+                wifi_scan_tick += 1;
+                if wifi_scan_tick % ACTIVE_SCAN_EVERY == 1 && wifi::trigger_active_scan() {
+                    std::thread::sleep(ACTIVE_SCAN_WAIT);
+                }
+                if let Ok(list) = wifi::scan() {
+                    let _ = app.emit("wifi-list", list);
+                }
+            }
 
             let enabled = is_enabled(&shared);
             if !enabled {
@@ -302,13 +320,6 @@ pub fn spawn(app: AppHandle, shared: Shared) {
                     });
                 }
                 continue;
-            }
-
-            if last_wifi_list.elapsed() >= WIFI_LIST_INTERVAL {
-                last_wifi_list = Instant::now();
-                if let Ok(list) = wifi::scan() {
-                    let _ = app.emit("wifi-list", list);
-                }
             }
 
             if last_check.elapsed() < CHECK_INTERVAL {

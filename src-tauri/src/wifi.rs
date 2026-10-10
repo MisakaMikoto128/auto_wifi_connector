@@ -184,6 +184,33 @@ pub fn scan() -> Result<Vec<WifiNetwork>, String> {
     Ok(networks)
 }
 
+/// 触发网卡主动扫描。
+///
+/// netsh 读取的是被动扫描缓存；网卡关联 AP 后会抑制全信道扫描，
+/// 缓存可能长时间只剩当前连接的网络。主动扫描让列表恢复完整。
+/// 返回是否成功发起扫描请求（扫描本身在后台进行，调用方需等待数秒）。
+pub fn trigger_active_scan() -> bool {
+    use windows::Win32::NetworkManagement::WiFi::*;
+    unsafe {
+        let mut version = 0u32;
+        let mut handle = windows::Win32::Foundation::HANDLE::default();
+        if WlanOpenHandle(2, None, &mut version, &mut handle) != 0 {
+            return false;
+        }
+        let mut list_ptr: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
+        let mut scanned = false;
+        if WlanEnumInterfaces(handle, None, &mut list_ptr) == 0 && !list_ptr.is_null() {
+            if (*list_ptr).dwNumberOfItems > 0 {
+                let guid = &(*list_ptr).InterfaceInfo[0].InterfaceGuid;
+                scanned = WlanScan(handle, guid, None, None, None) == 0;
+            }
+            WlanFreeMemory(list_ptr as *const core::ffi::c_void);
+        }
+        let _ = WlanCloseHandle(handle, None);
+        scanned
+    }
+}
+
 /// 当前连接的 SSID。
 pub fn connected_ssid() -> Option<String> {
     parse_connected_ssid(&run_netsh(&["show", "interfaces"]).ok()?)

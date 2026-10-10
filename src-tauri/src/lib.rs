@@ -32,7 +32,45 @@ fn get_snapshot(state: State<'_, Shared>) -> MonitorSnapshot {
     state.lock().unwrap().clone()
 }
 
-/// 启用或停用自动断网重连轮询。
+/// 界面设置，持久化到配置目录的 settings.json。
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+struct Settings {
+    /// 自动断网重连轮询开关。
+    #[serde(default)]
+    auto_reconnect: bool,
+}
+
+fn settings_path(app: &AppHandle) -> Option<std::path::PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|d| d.join("settings.json"))
+}
+
+/// 读取设置；文件不存在或损坏时返回默认值。
+fn load_settings(app: &AppHandle) -> Settings {
+    let Some(path) = settings_path(app) else {
+        return Settings::default();
+    };
+    let Ok(text) = std::fs::read_to_string(path) else {
+        return Settings::default();
+    };
+    serde_json::from_str(&text).unwrap_or_default()
+}
+
+fn save_settings(app: &AppHandle, settings: &Settings) {
+    let Some(path) = settings_path(app) else {
+        return;
+    };
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Ok(text) = serde_json::to_string(settings) {
+        let _ = std::fs::write(path, text);
+    }
+}
+
+/// 启用或停用自动断网重连轮询（同时持久化到 settings.json）。
 #[tauri::command]
 fn set_auto_reconnect(app: AppHandle, state: State<'_, Shared>, enabled: bool) -> MonitorSnapshot {
     let snapshot = {
@@ -40,8 +78,30 @@ fn set_auto_reconnect(app: AppHandle, state: State<'_, Shared>, enabled: bool) -
         guard.enabled = enabled;
         guard.clone()
     };
+    save_settings(
+        &app,
+        &Settings {
+            auto_reconnect: enabled,
+        },
+    );
     let _ = app.emit("monitor", &snapshot);
     snapshot
+}
+
+/// 在系统浏览器中打开开源仓库页面。
+#[tauri::command]
+fn open_repo() {
+    use windows::core::w;
+    unsafe {
+        let _ = windows::Win32::UI::Shell::ShellExecuteW(
+            None,
+            w!("open"),
+            w!("https://github.com/MisakaMikoto128/auto_wifi_connector"),
+            None,
+            None,
+            windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
+        );
+    }
 }
 
 /// 开机自启当前状态。
@@ -125,6 +185,7 @@ pub fn run() {
             set_auto_reconnect,
             autostart_is_enabled,
             autostart_set,
+            open_repo,
         ])
         .setup(|app| {
             let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
@@ -166,9 +227,36 @@ pub fn run() {
 
             sync_autostart(app.handle());
 
-            monitor::spawn(app.handle().clone(), app.state::<Shared>().inner().clone());
+            // 恢复上次退出时的自动重连开关状态
+            let shared = app.state::<Shared>();
+            shared.lock().unwrap().enabled = load_settings(app.handle()).auto_reconnect;
+
+            monitor::spawn(app.handle().clone(), shared.inner().clone());
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn settings_roundtrip() {
+        let s = Settings {
+            auto_reconnect: true,
+        };
+        let text = serde_json::to_string(&s).unwrap();
+        let parsed: Settings = serde_json::from_str(&text).unwrap();
+        assert!(parsed.auto_reconnect);
+    }
+
+    #[test]
+    fn settings_default_on_missing_or_corrupt() {
+        let parsed: Settings = serde_json::from_str("{}").unwrap_or_default();
+        assert!(!parsed.auto_reconnect);
+        let corrupt: Settings = serde_json::from_str("not json").unwrap_or_default();
+        assert!(!corrupt.auto_reconnect);
+    }
 }

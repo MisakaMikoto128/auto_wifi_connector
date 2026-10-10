@@ -2,6 +2,23 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.1] - 2026-10-10
+
+### 修复
+
+- WiFi 列表周期刷新此前被自动重连开关门控，未开启开关时列表不刷新：改为独立于开关始终执行
+- 列表长时间只剩当前连接的网络：被动扫描缓存滞后（网卡关联后抑制全信道扫描），周期触发 WlanScan 主动扫描
+- 「自动断网重连轮询」开关状态重启后丢失：持久化到配置目录 settings.json，启动时恢复
+
+### 变更
+
+- 移除待命状态的高斯三维分布曲面与示波器波形动画
+- README 与项目页截图更新为当前界面
+
+### 新增
+
+- 页脚开源仓库链接（点击在系统浏览器打开）
+
 ## [0.3.0] - 2026-10-10
 
 ### 新增
@@ -97,6 +114,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.3.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.4...v0.2.5
