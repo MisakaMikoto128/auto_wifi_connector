@@ -1,14 +1,16 @@
-//! WiFi 扫描、已保存配置读取与连接，基于 Windows netsh 命令。
+//! WiFi 扫描、连接与状态查询，基于 Windows WLAN API（wlanapi.dll）。
 //!
-//! netsh 输出语言跟随系统区域设置，解析同时兼容英文与中文标签；
-//! 输出字节按 GBK 解码，以正确读取含非 ASCII 字符的 SSID。
-//! 所有子进程均带 CREATE_NO_WINDOW 标志，否则 GUI 程序中每次调用都会闪现控制台窗口。
+//! 全部数据来自结构体而非文本解析，与系统显示语言、区域编码无关。
+//! SSID 按 WiFi 标准以 UTF-8 字节传输，解码优先 UTF-8、失败回退 GBK。
 
 use encoding_rs::GBK;
 use serde::Serialize;
 use std::os::windows::process::CommandExt;
 use std::process::Command;
 use std::time::{Duration, Instant};
+use windows::core::PCWSTR;
+use windows::Win32::Foundation::HANDLE;
+use windows::Win32::NetworkManagement::WiFi::*;
 
 /// Win32 创建进程标志：不创建控制台窗口。
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -22,198 +24,10 @@ pub struct WifiNetwork {
     pub signal: u8,
     /// 是否需要密码（开放网络为 false）。
     pub secured: bool,
-    /// 是否存在同名的已保存配置，存在则可直接连接。
+    /// 是否存在同名配置，存在则可直接连接。
     pub saved: bool,
     /// 是否为当前已连接的网络。
     pub connected: bool,
-}
-
-/// 执行 `netsh <args>` 并返回解码后的标准输出。
-fn run_netsh_plain(args: &[&str]) -> Result<String, String> {
-    let output = Command::new("netsh")
-        .args(args)
-        .creation_flags(CREATE_NO_WINDOW)
-        .output()
-        .map_err(|e| format!("failed to run netsh: {e}"))?;
-    Ok(decode_netsh_output(&output.stdout))
-}
-
-/// 执行 `netsh wlan <args>`。
-fn run_netsh(args: &[&str]) -> Result<String, String> {
-    let mut full = vec!["wlan"];
-    full.extend_from_slice(args);
-    run_netsh_plain(&full)
-}
-
-/// 解码 netsh 输出。
-///
-/// netsh 输出的标签部分（SSID、Signal 等）是控制台代码页编码（中文系统为 GBK，
-/// 英文系统为 ASCII），而 SSID 与配置文件名的值部分是 UTF-8 字节。
-/// 整体按单一编码解码必然有一方乱码，因此按行处理：
-/// 名称行的值用 UTF-8 解码（失败回退 GBK），其余内容用 GBK 解码。
-fn decode_netsh_output(bytes: &[u8]) -> String {
-    let mut out = String::new();
-    for raw_line in bytes.split(|&b| b == b'\n') {
-        let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
-        out.push_str(&decode_line(line));
-        out.push('\n');
-    }
-    out
-}
-
-/// 解码单行。`SSID n : 名称`、`All User Profile : 名称` 等名称行的
-/// 值部分按 UTF-8 解码，其余部分按 GBK 解码。
-fn decode_line(line: &[u8]) -> String {
-    let Some(colon) = line.iter().position(|&b| b == b':') else {
-        return GBK.decode(line).0.into_owned();
-    };
-    let label = GBK.decode(&line[..colon]).0;
-    let trimmed = label.trim();
-    let is_name_line = (trimmed.starts_with("SSID") && !trimmed.contains("BSSID"))
-        || trimmed.contains("User Profile")
-        || trimmed.contains("用户配置文件");
-    if !is_name_line {
-        return GBK.decode(line).0.into_owned();
-    }
-    let value = &line[colon + 1..];
-    let value_text = match String::from_utf8(value.to_vec()) {
-        Ok(text) => text,
-        Err(_) => GBK.decode(value).0.into_owned(),
-    };
-    format!("{label}:{value_text}")
-}
-
-/// 从行中标签与值的固定分隔位置取值：`标签 : 值`。
-fn value_after_colon(line: &str) -> Option<&str> {
-    line.split_once(':')
-        .map(|(_, v)| v.trim())
-        .filter(|v| !v.is_empty())
-}
-
-/// 判断一行是否为 `SSID <n> : <名称>` 形式的网络起始行，返回名称。
-fn parse_ssid_header(line: &str) -> Option<String> {
-    let rest = line.trim_start().strip_prefix("SSID ")?;
-    let (num, value) = rest.split_once(':')?;
-    if num.trim().chars().all(|c| c.is_ascii_digit()) && !num.trim().is_empty() {
-        let ssid = value.trim();
-        if !ssid.is_empty() {
-            return Some(ssid.to_string());
-        }
-    }
-    None
-}
-
-/// 解析 `netsh wlan show networks mode=bssid` 的输出，按信号降序返回网络列表。
-/// 同一 SSID 的多个 BSSID 合并为一个条目，信号取最大值。
-pub fn parse_networks(output: &str) -> Vec<WifiNetwork> {
-    let mut networks: Vec<WifiNetwork> = Vec::new();
-    for line in output.lines() {
-        if let Some(ssid) = parse_ssid_header(line) {
-            if !networks.iter().any(|n| n.ssid == ssid) {
-                networks.push(WifiNetwork {
-                    ssid,
-                    signal: 0,
-                    secured: true,
-                    saved: false,
-                    connected: false,
-                });
-            }
-            continue;
-        }
-        let Some(current) = networks.last_mut() else {
-            continue;
-        };
-        let trimmed = line.trim();
-        let is_signal = trimmed.starts_with("Signal") || trimmed.starts_with("信号");
-        let is_auth = trimmed.starts_with("Authentication") || trimmed.starts_with("身份验证");
-        if is_signal {
-            if let Some(v) = value_after_colon(trimmed) {
-                if let Ok(pct) = v.trim_end_matches('%').trim().parse::<u8>() {
-                    current.signal = current.signal.max(pct);
-                }
-            }
-        } else if is_auth {
-            if let Some(v) = value_after_colon(trimmed) {
-                current.secured = !(v.contains("Open") || v.contains("开放"));
-            }
-        }
-    }
-    networks.sort_by_key(|n| std::cmp::Reverse(n.signal));
-    networks
-}
-
-/// 解析 `netsh wlan show profiles` 的输出，返回已保存配置名称列表。
-pub fn parse_profiles(output: &str) -> Vec<String> {
-    output
-        .lines()
-        .filter(|l| {
-            let t = l.trim();
-            t.starts_with("All User Profile") || t.starts_with("所有用户配置文件")
-        })
-        .filter_map(value_after_colon)
-        .map(str::to_string)
-        .collect()
-}
-
-/// 解析 `netsh wlan show interfaces` 的输出，返回当前连接的 SSID。
-pub fn parse_connected_ssid(output: &str) -> Option<String> {
-    for line in output.lines() {
-        let t = line.trim();
-        if t.starts_with("SSID") && !t.contains("BSSID") {
-            if let Some(rest) = t.strip_prefix("SSID") {
-                // interfaces 输出中为 `SSID : 名称`，区别于扫描输出的 `SSID 1 : 名称`
-                if rest.trim_start().starts_with(':') {
-                    return value_after_colon(t).map(str::to_string);
-                }
-            }
-        }
-    }
-    None
-}
-
-/// 扫描可见网络，并标注已保存配置与当前连接。
-pub fn scan() -> Result<Vec<WifiNetwork>, String> {
-    let mut networks = parse_networks(&run_netsh(&["show", "networks", "mode=bssid"])?);
-    let profiles = parse_profiles(&run_netsh(&["show", "profiles"])?);
-    let connected = parse_connected_ssid(&run_netsh(&["show", "interfaces"])?);
-    for n in &mut networks {
-        n.saved = profiles.iter().any(|p| p == &n.ssid);
-        n.connected = connected.as_deref() == Some(n.ssid.as_str());
-    }
-    networks.sort_by_key(|n| std::cmp::Reverse(n.signal));
-    Ok(networks)
-}
-
-/// 触发网卡主动扫描。
-///
-/// netsh 读取的是被动扫描缓存；网卡关联 AP 后会抑制全信道扫描，
-/// 缓存可能长时间只剩当前连接的网络。主动扫描让列表恢复完整。
-/// 返回是否成功发起扫描请求（扫描本身在后台进行，调用方需等待数秒）。
-pub fn trigger_active_scan() -> bool {
-    use windows::Win32::NetworkManagement::WiFi::*;
-    unsafe {
-        let mut version = 0u32;
-        let mut handle = windows::Win32::Foundation::HANDLE::default();
-        if WlanOpenHandle(2, None, &mut version, &mut handle) != 0 {
-            return false;
-        }
-        let mut list_ptr: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
-        let mut scanned = false;
-        if WlanEnumInterfaces(handle, None, &mut list_ptr) == 0 && !list_ptr.is_null() {
-            if (*list_ptr).dwNumberOfItems > 0 {
-                let guid = &(*list_ptr).InterfaceInfo[0].InterfaceGuid;
-                scanned = WlanScan(handle, guid, None, None, None) == 0;
-            }
-            WlanFreeMemory(list_ptr as *const core::ffi::c_void);
-        }
-        let _ = WlanCloseHandle(handle, None);
-        scanned
-    }
-}
-
-/// 当前连接的 SSID。
-pub fn connected_ssid() -> Option<String> {
-    parse_connected_ssid(&run_netsh(&["show", "interfaces"]).ok()?)
 }
 
 /// 当前连接的详细信息。
@@ -229,58 +43,309 @@ pub struct ConnectionInfo {
     pub signal: u8,
 }
 
-/// 解析 `netsh wlan show interfaces` 输出的连接详情。未连接时返回 None。
-pub fn parse_connection_info(output: &str) -> Option<ConnectionInfo> {
-    let ssid = parse_connected_ssid(output)?;
-    let mut info = ConnectionInfo {
-        ssid,
-        band: String::new(),
-        channel: 0,
-        receive_rate_mbps: 0.0,
-        transmit_rate_mbps: 0.0,
-        authentication: String::new(),
-        signal: 0,
-    };
-    for line in output.lines() {
-        let t = line.trim();
-        let Some(value) = value_after_colon(t) else {
-            continue;
-        };
-        if t.starts_with("Band") || t.starts_with("频段") {
-            info.band = value.to_string();
-        } else if t.starts_with("Channel") || t.starts_with("频道") || t.starts_with("信道") {
-            info.channel = value.parse().unwrap_or(0);
-        } else if t.starts_with("Receive rate") || t.starts_with("接收速率") {
-            info.receive_rate_mbps = value.parse().unwrap_or(0.0);
-        } else if t.starts_with("Transmit rate") || t.starts_with("传输速率") {
-            info.transmit_rate_mbps = value.parse().unwrap_or(0.0);
-        } else if t.starts_with("Authentication") || t.starts_with("身份验证") {
-            info.authentication = value.to_string();
-        } else if t.starts_with("Signal") || t.starts_with("信号") {
-            info.signal = value.trim_end_matches('%').trim().parse().unwrap_or(0);
+/// WLAN 会话：客户端句柄与第一个无线接口 GUID 的生命周期封装。
+struct Wlan {
+    handle: HANDLE,
+    interface: windows::core::GUID,
+}
+
+impl Wlan {
+    fn open() -> Option<Self> {
+        unsafe {
+            let mut version = 0u32;
+            let mut handle = HANDLE::default();
+            if WlanOpenHandle(2, None, &mut version, &mut handle) != 0 {
+                return None;
+            }
+            let mut list: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
+            let mut interface = None;
+            if WlanEnumInterfaces(handle, None, &mut list) == 0 && !list.is_null() {
+                if (*list).dwNumberOfItems > 0 {
+                    interface = Some((*list).InterfaceInfo[0].InterfaceGuid);
+                }
+                WlanFreeMemory(list as *const core::ffi::c_void);
+            }
+            match interface {
+                Some(guid) => Some(Wlan {
+                    handle,
+                    interface: guid,
+                }),
+                None => {
+                    let _ = WlanCloseHandle(handle, None);
+                    None
+                }
+            }
         }
     }
-    Some(info)
+}
+
+impl Drop for Wlan {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = WlanCloseHandle(self.handle, None);
+        }
+    }
+}
+
+/// SSID 原始字节解码：UTF-8 优先（WiFi 标准），失败回退 GBK。
+fn ssid_to_string(raw: &[u8]) -> String {
+    match String::from_utf8(raw.to_vec()) {
+        Ok(text) => text,
+        Err(_) => GBK.decode(raw).0.into_owned(),
+    }
+}
+
+/// 以 0 终止的 UTF-16 数组转字符串。
+fn u16z_to_string(raw: &[u16]) -> String {
+    let end = raw.iter().position(|&c| c == 0).unwrap_or(raw.len());
+    String::from_utf16_lossy(&raw[..end])
+}
+
+/// 认证算法枚举转显示文本。
+fn auth_algorithm_text(algo: DOT11_AUTH_ALGORITHM) -> &'static str {
+    match algo {
+        DOT11_AUTH_ALGO_80211_OPEN => "Open",
+        DOT11_AUTH_ALGO_80211_SHARED_KEY => "Shared",
+        DOT11_AUTH_ALGO_WPA => "WPA-Enterprise",
+        DOT11_AUTH_ALGO_WPA_PSK => "WPA-Personal",
+        DOT11_AUTH_ALGO_WPA_NONE => "WPA-None",
+        DOT11_AUTH_ALGO_RSNA => "WPA2-Enterprise",
+        DOT11_AUTH_ALGO_RSNA_PSK => "WPA2-Personal",
+        DOT11_AUTH_ALGO_WPA3 => "WPA3",
+        DOT11_AUTH_ALGO_WPA3_SAE => "WPA3-Personal",
+        DOT11_AUTH_ALGO_OWE => "OWE",
+        DOT11_AUTH_ALGO_WPA3_ENT => "WPA3-Enterprise",
+        _ => "Unknown",
+    }
+}
+
+/// 触发网卡主动扫描。
+///
+/// WLAN API 的可用网络列表来自网卡上报；网卡关联 AP 后会抑制全信道扫描，
+/// 列表可能长时间只剩当前连接的网络。主动扫描让列表恢复完整。
+/// 返回是否成功发起扫描请求（扫描在后台进行，调用方需等待数秒）。
+pub fn trigger_active_scan() -> bool {
+    unsafe {
+        let Some(wlan) = Wlan::open() else {
+            return false;
+        };
+        WlanScan(wlan.handle, &wlan.interface, None, None, None) == 0
+    }
+}
+
+/// 扫描可见网络并标注已保存配置与当前连接，按信号降序。
+pub fn scan() -> Result<Vec<WifiNetwork>, String> {
+    unsafe {
+        let Some(wlan) = Wlan::open() else {
+            return Err("WlanOpenHandle failed".to_string());
+        };
+        let mut list: *mut WLAN_AVAILABLE_NETWORK_LIST = std::ptr::null_mut();
+        if WlanGetAvailableNetworkList(wlan.handle, &wlan.interface, 0, None, &mut list) != 0 {
+            return Err("WlanGetAvailableNetworkList failed".to_string());
+        }
+        let mut networks: Vec<WifiNetwork> = Vec::new();
+        if !list.is_null() {
+            let count = (*list).dwNumberOfItems as usize;
+            let base = (*list).Network.as_ptr();
+            for i in 0..count {
+                let n = &*base.add(i);
+                let ssid = ssid_to_string(&n.dot11Ssid.ucSSID[..n.dot11Ssid.uSSIDLength as usize]);
+                if ssid.is_empty() {
+                    continue;
+                }
+                // 同一 SSID 多条目合并，信号取最大值
+                let signal = n.wlanSignalQuality.min(100) as u8;
+                let saved = n.strProfileName[0] != 0;
+                let connected = n.dwFlags & WLAN_AVAILABLE_NETWORK_CONNECTED != 0;
+                if let Some(existing) = networks.iter_mut().find(|e| e.ssid == ssid) {
+                    existing.signal = existing.signal.max(signal);
+                    existing.saved |= saved;
+                    existing.connected |= connected;
+                } else {
+                    networks.push(WifiNetwork {
+                        ssid,
+                        signal,
+                        secured: n.bSecurityEnabled.as_bool(),
+                        saved,
+                        connected,
+                    });
+                }
+            }
+            WlanFreeMemory(list as *const core::ffi::c_void);
+        }
+        networks.sort_by_key(|n| std::cmp::Reverse(n.signal));
+        Ok(networks)
+    }
+}
+
+/// 当前连接的 SSID。
+pub fn connected_ssid() -> Option<String> {
+    unsafe {
+        let wlan = Wlan::open()?;
+        let mut data: *mut core::ffi::c_void = std::ptr::null_mut();
+        let mut size = 0u32;
+        if WlanQueryInterface(
+            wlan.handle,
+            &wlan.interface,
+            wlan_intf_opcode_current_connection,
+            None,
+            &mut size,
+            &mut data,
+            None,
+        ) != 0
+            || data.is_null()
+        {
+            return None;
+        }
+        let attrs = &*(data as *const WLAN_CONNECTION_ATTRIBUTES);
+        let result = if attrs.isState == wlan_interface_state_connected {
+            Some(u16z_to_string(&attrs.strProfileName))
+        } else {
+            None
+        };
+        WlanFreeMemory(data);
+        result
+    }
 }
 
 /// 当前连接详情；未连接时返回 None。
 pub fn connection_info() -> Option<ConnectionInfo> {
-    parse_connection_info(&run_netsh(&["show", "interfaces"]).ok()?)
+    unsafe {
+        let wlan = Wlan::open()?;
+        let mut data: *mut core::ffi::c_void = std::ptr::null_mut();
+        let mut size = 0u32;
+        if WlanQueryInterface(
+            wlan.handle,
+            &wlan.interface,
+            wlan_intf_opcode_current_connection,
+            None,
+            &mut size,
+            &mut data,
+            None,
+        ) != 0
+            || data.is_null()
+        {
+            return None;
+        }
+        let attrs = &*(data as *const WLAN_CONNECTION_ATTRIBUTES);
+        if attrs.isState != wlan_interface_state_connected {
+            WlanFreeMemory(data);
+            return None;
+        }
+        let assoc = &attrs.wlanAssociationAttributes;
+        let ssid = u16z_to_string(&attrs.strProfileName);
+        let auth = auth_algorithm_text(attrs.wlanSecurityAttributes.dot11AuthAlgorithm);
+        let bssid = assoc.dot11Bssid;
+        let signal = assoc.wlanSignalQuality.min(100) as u8;
+        let rx = assoc.ulRxRate as f32 / 1000.0;
+        let tx = assoc.ulTxRate as f32 / 1000.0;
+        WlanFreeMemory(data);
+
+        // 频段与信道：从 BSS 列表中当前 BSSID 的中心频率换算
+        let (band, channel) = bss_band_channel(&wlan, &bssid);
+        Some(ConnectionInfo {
+            ssid,
+            band,
+            channel,
+            receive_rate_mbps: rx,
+            transmit_rate_mbps: tx,
+            authentication: auth.to_string(),
+            signal,
+        })
+    }
 }
 
-/// 发起连接。返回 Ok 仅表示 netsh 接受了请求，不代表已关联成功。
-pub fn connect(ssid: &str) -> Result<(), String> {
-    if ssid.contains('"') {
-        return Err("ssid must not contain quotes".to_string());
-    }
-    // name 参数必须加引号，否则含空格的 SSID 会被 netsh 拆成多个参数
-    let name_arg = format!("name=\"{ssid}\"");
-    let out = run_netsh(&["connect", &name_arg])?;
-    if out.contains("success") || out.contains("成功") {
-        Ok(())
+/// 由 BSS 中心频率（kHz）换算频段与信道号。
+fn freq_to_band_channel(freq_khz: u32) -> (String, u32) {
+    let mhz = freq_khz / 1000;
+    if mhz >= 5000 {
+        ("5 GHz".to_string(), (mhz - 5000) / 5)
+    } else if mhz >= 2400 {
+        ("2.4 GHz".to_string(), (mhz - 2407) / 5)
     } else {
-        Err(out.trim().to_string())
+        (String::new(), 0)
     }
+}
+
+/// 当前连接的频段与信道，查询失败时返回空值。
+unsafe fn bss_band_channel(wlan: &Wlan, bssid: &[u8; 6]) -> (String, u32) {
+    let mut list: *mut WLAN_BSS_LIST = std::ptr::null_mut();
+    if WlanGetNetworkBssList(
+        wlan.handle,
+        &wlan.interface,
+        None,
+        dot11_BSS_type_infrastructure,
+        false,
+        None,
+        &mut list,
+    ) != 0
+        || list.is_null()
+    {
+        return (String::new(), 0);
+    }
+    let count = (*list).dwNumberOfItems as usize;
+    let base = (*list).wlanBssEntries.as_ptr();
+    let mut result = (String::new(), 0);
+    for i in 0..count {
+        let entry = &*base.add(i);
+        if &entry.dot11Bssid == bssid {
+            result = freq_to_band_channel(entry.ulChCenterFrequency);
+            break;
+        }
+    }
+    WlanFreeMemory(list as *const core::ffi::c_void);
+    result
+}
+
+/// 发起连接（按 SSID 同名配置连接）。返回 Ok 仅表示系统接受了请求。
+pub fn connect(ssid: &str) -> Result<(), String> {
+    unsafe {
+        let Some(wlan) = Wlan::open() else {
+            return Err("WlanOpenHandle failed".to_string());
+        };
+        let profile_wide: Vec<u16> = ssid.encode_utf16().chain(std::iter::once(0)).collect();
+        let params = WLAN_CONNECTION_PARAMETERS {
+            wlanConnectionMode: wlan_connection_mode_profile,
+            strProfile: PCWSTR(profile_wide.as_ptr()),
+            pDot11Ssid: std::ptr::null_mut(),
+            pDesiredBssidList: std::ptr::null_mut(),
+            dot11BssType: dot11_BSS_type_infrastructure,
+            dwFlags: 0,
+        };
+        let code = WlanConnect(wlan.handle, &wlan.interface, &params, None);
+        if code == 0 {
+            Ok(())
+        } else {
+            Err(format!("WlanConnect failed with code {code}"))
+        }
+    }
+}
+
+/// 断开当前 WiFi 连接。
+pub fn disconnect() -> Result<(), String> {
+    unsafe {
+        let Some(wlan) = Wlan::open() else {
+            return Err("WlanOpenHandle failed".to_string());
+        };
+        let code = WlanDisconnect(wlan.handle, &wlan.interface, None);
+        if code == 0 {
+            Ok(())
+        } else {
+            Err(format!("WlanDisconnect failed with code {code}"))
+        }
+    }
+}
+
+/// 等待网卡关联到指定 SSID，超时返回 false。
+pub fn wait_associated(ssid: &str, timeout: Duration) -> bool {
+    let start = Instant::now();
+    while start.elapsed() < timeout {
+        if connected_ssid().as_deref() == Some(ssid) {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(800));
+    }
+    false
 }
 
 /// WiFi 无线电是否打开。查询失败或不存在 WiFi 无线电时返回 None。
@@ -319,212 +384,47 @@ pub fn ensure_wifi_on() -> bool {
     wifi_radio_on().unwrap_or(false)
 }
 
-/// 断开当前 WiFi 连接。
-pub fn disconnect() -> Result<(), String> {
-    run_netsh(&["disconnect"]).map(|_| ())
-}
-
-/// 等待网卡关联到指定 SSID，超时返回 false。
-pub fn wait_associated(ssid: &str, timeout: Duration) -> bool {
-    let start = Instant::now();
-    while start.elapsed() < timeout {
-        if connected_ssid().as_deref() == Some(ssid) {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(800));
-    }
-    false
+/// 执行 `netsh <args>` 并返回标准输出。仅用于适配器启停，输出不解析。
+fn run_netsh_plain(args: &[&str]) -> Result<String, String> {
+    let output = Command::new("netsh")
+        .args(args)
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| format!("failed to run netsh: {e}"))?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const NETWORKS_EN: &str = r#"
-Interface name : WLAN
-There are 2 networks currently visible.
-
-SSID 1 : CMCC-u2c6-5G
-    Network type            : Infrastructure
-    Authentication          : WPA2-Personal
-    Encryption              : CCMP
-    BSSID 1                 : 24:e8:e5:7a:6b:33
-         Signal             : 79%
-         Radio type         : 802.11ac
-
-SSID 2 : CafeGuest
-    Network type            : Infrastructure
-    Authentication          : Open
-    Encryption              : None
-    BSSID 1                 : aa:bb:cc:dd:ee:ff
-         Signal             : 45%
-    BSSID 2                 : 11:22:33:44:55:66
-         Signal             : 62%
-"#;
-
-    const NETWORKS_ZH: &str = r#"
-接口名称 : WLAN
-当前有 1 个网络可见。
-
-SSID 1 : 魔法上网
-    网络类型              : 结构
-    身份验证              : WPA2 - 个人
-    加密                  : CCMP
-    BSSID 1               : 24:e8:e5:7a:6b:33
-         信号               : 66%
-"#;
-
-    const PROFILES_EN: &str = r#"
-Profiles on interface WLAN:
-
-Group policy profiles (read only)
----------------------------------
-    <None>
-
-User profiles
--------------
-    All User Profile     : CMCC-u2c6-5G
-    All User Profile     : 魔法上网
-    All User Profile     : Redmi K70
-"#;
-
-    const PROFILES_ZH: &str = r#"
-接口 WLAN 上的配置文件:
-
-用户配置文件
--------------
-    所有用户配置文件 : CMCC-u2c6-5G
-    所有用户配置文件 : 抛瓦拉满_5G.
-"#;
-
-    const INTERFACES_CONNECTED: &str = r#"
-There is 1 interface on the system:
-
-    Name                   : WLAN
-    State                  : connected
-    SSID                   : CMCC-u2c6-5G
-    AP BSSID               : 24:e8:e5:7a:6b:33
-    Signal                 : 79%
-"#;
-
-    const INTERFACES_DISCONNECTED: &str = r#"
-There is 1 interface on the system:
-
-    Name                   : WLAN
-    State                  : disconnected
-"#;
-
     #[test]
-    fn decodes_utf8_ssid_value_with_ascii_label() {
-        // 真实样本：英文系统 netsh 输出，SSID 值为 UTF-8 字节（「耿」= E8 80 BF）
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"SSID 5 : ");
-        bytes.extend_from_slice("耿".as_bytes());
-        bytes.extend_from_slice(b"\r\n");
-        let text = decode_netsh_output(&bytes);
-        assert!(text.contains("SSID 5 : 耿"), "got: {text:?}");
+    fn decodes_utf8_ssid() {
+        assert_eq!(ssid_to_string("魔法上网".as_bytes()), "魔法上网");
+        assert_eq!(ssid_to_string(b"CMCC-u2c6-5G"), "CMCC-u2c6-5G");
     }
 
     #[test]
-    fn decodes_utf8_value_with_gbk_label() {
-        // 模拟中文系统：标签「所有用户配置文件」为 GBK 字节，值「魔法上网」为 UTF-8 字节
-        let (label, _, _) = GBK.encode("    所有用户配置文件 ");
-        let mut bytes = label.into_owned();
-        bytes.extend_from_slice(b": ");
-        bytes.extend_from_slice("魔法上网".as_bytes());
-        bytes.extend_from_slice(b"\r\n");
-        let text = decode_netsh_output(&bytes);
-        assert!(text.contains("所有用户配置文件"), "label lost: {text:?}");
-        assert!(text.contains("魔法上网"), "value lost: {text:?}");
+    fn decodes_gbk_ssid_fallback() {
+        let (gbk, _, _) = GBK.encode("中文热点");
+        assert_eq!(ssid_to_string(&gbk), "中文热点");
     }
 
     #[test]
-    fn decodes_gbk_value_when_not_utf8() {
-        // 值为 GBK 字节时回退 GBK 解码
-        let (value, _, _) = GBK.encode("中文热点");
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"SSID 1 : ");
-        bytes.extend_from_slice(&value);
-        bytes.extend_from_slice(b"\r\n");
-        let text = decode_netsh_output(&bytes);
-        assert!(text.contains("中文热点"), "got: {text:?}");
+    fn freq_mapping() {
+        assert_eq!(freq_to_band_channel(5745000), ("5 GHz".to_string(), 149));
+        assert_eq!(freq_to_band_channel(2437000), ("2.4 GHz".to_string(), 6));
     }
 
     #[test]
-    fn parses_profiles_from_raw_utf8_name_bytes() {
-        // 真实样本：profiles 输出的配置名是 UTF-8 字节，经解码后应提取正确中文名
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(b"User profiles\r\n-------------\r\n    All User Profile     : ");
-        bytes.extend_from_slice("3D打印机".as_bytes());
-        bytes.extend_from_slice(b"\r\n    All User Profile     : ");
-        bytes.extend_from_slice("抛瓦拉满_5G.".as_bytes());
-        bytes.extend_from_slice(b"\r\n");
-        let profiles = parse_profiles(&decode_netsh_output(&bytes));
-        assert_eq!(profiles, vec!["3D打印机", "抛瓦拉满_5G."]);
+    fn auth_text_mapping() {
+        assert_eq!(auth_algorithm_text(DOT11_AUTH_ALGO_RSNA_PSK), "WPA2-Personal");
+        assert_eq!(auth_algorithm_text(DOT11_AUTH_ALGO_80211_OPEN), "Open");
     }
 
     #[test]
-    fn parses_english_networks() {
-        let nets = parse_networks(NETWORKS_EN);
-        assert_eq!(nets.len(), 2);
-        // 按信号降序：CMCC 79 在前
-        assert_eq!(nets[0].ssid, "CMCC-u2c6-5G");
-        assert_eq!(nets[0].signal, 79);
-        assert!(nets[0].secured);
-        // 同一 SSID 多个 BSSID 合并，信号取最大值
-        assert_eq!(nets[1].ssid, "CafeGuest");
-        assert_eq!(nets[1].signal, 62);
-        assert!(!nets[1].secured);
-    }
-
-    #[test]
-    fn parses_chinese_networks() {
-        let nets = parse_networks(NETWORKS_ZH);
-        assert_eq!(nets.len(), 1);
-        assert_eq!(nets[0].ssid, "魔法上网");
-        assert_eq!(nets[0].signal, 66);
-        assert!(nets[0].secured);
-    }
-
-    #[test]
-    fn parses_english_profiles() {
-        let profiles = parse_profiles(PROFILES_EN);
-        assert_eq!(profiles, vec!["CMCC-u2c6-5G", "魔法上网", "Redmi K70"]);
-    }
-
-    #[test]
-    fn parses_chinese_profiles() {
-        let profiles = parse_profiles(PROFILES_ZH);
-        assert_eq!(profiles, vec!["CMCC-u2c6-5G", "抛瓦拉满_5G."]);
-    }
-
-    #[test]
-    fn parses_connection_info_fields() {
-        let info = parse_connection_info(INTERFACES_CONNECTED).expect("should parse");
-        assert_eq!(info.ssid, "CMCC-u2c6-5G");
-        assert_eq!(info.signal, 79);
-    }
-
-    #[test]
-    fn connection_info_none_when_disconnected() {
-        assert!(parse_connection_info(INTERFACES_DISCONNECTED).is_none());
-    }
-
-    #[test]
-    fn parses_connected_ssid() {
-        assert_eq!(
-            parse_connected_ssid(INTERFACES_CONNECTED).as_deref(),
-            Some("CMCC-u2c6-5G")
-        );
-    }
-
-    #[test]
-    fn parses_disconnected_state() {
-        assert_eq!(parse_connected_ssid(INTERFACES_DISCONNECTED), None);
-    }
-
-    #[test]
-    fn rejects_ssid_with_quotes() {
-        assert!(connect("bad\"ssid").is_err());
+    fn u16z_conversion() {
+        let raw: [u16; 4] = [0x32, 0x30, 0x32, 0];
+        assert_eq!(u16z_to_string(&raw), "202");
     }
 }

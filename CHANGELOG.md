@@ -2,6 +2,13 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-10-16
+
+### 变更
+
+- WiFi 数据层从 netsh 文本解析切换为 Windows WLAN API（wlanapi.dll）结构体：扫描、信号强度、已保存配置标注、当前连接、连接详情、连接与断开全部来自系统接口，与系统显示语言和区域编码无关。调研确认：wifiscanner 的 Windows 实现同样是 netsh 文本解析且更简陋，wifi-rs 需要密码明文，均无现成库覆盖本场景，平台原生 API 是唯一可靠方案
+- wifi 模块接口（scan / connect / disconnect / connected_ssid / connection_info）作为平台抽象层，后续 macOS（CoreWLAN）与 Linux（NetworkManager）接入同一接口
+
 ## [0.3.1] - 2026-10-10
 
 ### 修复
@@ -114,6 +121,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.4.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.6...v0.3.0
 [0.2.6]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.5...v0.2.6

@@ -98,7 +98,7 @@ cargo test --test live_reconnect -- --ignored     # 真实断网重连集成测�
 
 ```
 src-tauri/src/
-  wifi.rs      # netsh 扫描、已保存配置读取、连接（输出解析兼容中英文系统）
+  wifi.rs      # WLAN API 扫描、连接、状态查询（结构体数据，与系统语言无关）
   netcheck.rs  # 零依赖最小 HTTP 连通性探测，时间有界
   monitor.rs   # 监控轮询与恢复流程状态机，向前端推送快照
   lib.rs       # Tauri 命令、托盘、关窗隐藏、开机自启

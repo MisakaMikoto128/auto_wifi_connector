@@ -1,0 +1,312 @@
+diagnose report — 2026-10-15 22:37:48
+windows: 10.0.26200 (10)
+system locale: utf-8
+
+============================================================
+$ netsh wlan show interfaces
+exit code: 0
+raw bytes (first 400, hex): 0d 0a 54 68 65 72 65 20 69 73 20 31 20 69 6e 74 65 72 66 61 63 65 20 6f 6e 20 74 68 65 20 73 79 73 74 65 6d 3a 20 0d 0a 0d 0a 20 20 20 20 4e 61 6d 65 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 57 4c 41 4e 0d 0a 20 20 20 20 44 65 73 63 72 69 70 74 69 6f 6e 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 52 5a 36 30 38 20 57 69 2d 46 69 20 36 45 20 38 30 4d 48 7a 0d 0a 20 20 20 20 47 55 49 44 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 64 36 65 62 31 30 61 61 2d 39 34 32 32 2d 34 38 32 64 2d 39 65 63 31 2d 66 65 32 38 37 32 66 34 65 63 39 30 0d 0a 20 20 20 20 50 68 79 73 69 63 61 6c 20 61 64 64 72 65 73 73 20 20 20 20 20 20 20 3a 20 31 30 3a 36 66 3a 64 39 3a 62 30 3a 32 30 3a 33 31 0d 0a 20 20 20 20 49 6e 74 65 72 66 61 63 65 20 74 79 70 65 20 20 20 20 20 20 20 20 20 3a 20 50 72 69 6d 61 72 79 0d 0a 20 20 20 20 53 74 61 74 65 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 63 6f 6e 6e 65 63 74 65 64 0d 0a 20 20 20 20 53 53 49 44 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 32 30 32 0d 0a 20 20 20 20 41 50 20 42 53 53 49 44 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 61 38 3a 35 65 3a 34 35 3a 38 39 3a 62 65 3a 63
+--- decoded as utf-8 ---
+
+There is 1 interface on the system: 
+
+    Name                   : WLAN
+    Description            : RZ608 Wi-Fi 6E 80MHz
+    GUID                   : d6eb10aa-9422-482d-9ec1-fe2872f4ec90
+    Physical address       : 10:6f:d9:b0:20:31
+    Interface type         : Primary
+    State                  : connected
+    SSID                   : 202
+    AP BSSID               : a8:5e:45:89:be:c4
+    Band                   : 5 GHz
+    Channel                : 157
+    Connected Akm-cipher   : [ akm = 00-0f-ac:02, cipher =  00-0f-ac:04 ]
+    Network type           : Infrastructure
+    Radio type             : 802.11ac
+    Authentication         : WPA2-Personal
+    Cipher                 : CCMP
+    Connection mode        : Auto Connect
+    Receive rate (Mbps)    : 866.7
+    Transmit rate (Mbps)   : 866.7
+    Signal                 : 78% 
+    Rssi                   : -66
+    Profile                : 202 
+    QoS MSCS Configured         : 0
+    QoS Map Configured          : 0
+    QoS Map Allowed by Policy   : 0
+
+
+--- decoded as gbk ---
+
+There is 1 interface on the system: 
+
+    Name                   : WLAN
+    Description            : RZ608 Wi-Fi 6E 80MHz
+    GUID                   : d6eb10aa-9422-482d-9ec1-fe2872f4ec90
+    Physical address       : 10:6f:d9:b0:20:31
+    Interface type         : Primary
+    State                  : connected
+    SSID                   : 202
+    AP BSSID               : a8:5e:45:89:be:c4
+    Band                   : 5 GHz
+    Channel                : 157
+    Connected Akm-cipher   : [ akm = 00-0f-ac:02, cipher =  00-0f-ac:04 ]
+    Network type           : Infrastructure
+    Radio type             : 802.11ac
+    Authentication         : WPA2-Personal
+    Cipher                 : CCMP
+    Connection mode        : Auto Connect
+    Receive rate (Mbps)    : 866.7
+    Transmit rate (Mbps)   : 866.7
+    Signal                 : 78% 
+    Rssi                   : -66
+    Profile                : 202 
+    QoS MSCS Configured         : 0
+    QoS Map Configured          : 0
+    QoS Map Allowed by Policy   : 0
+
+
+
+============================================================
+$ netsh wlan show networks mode=bssid
+exit code: 0
+raw bytes (first 400, hex): 20 0d 0a 49 6e 74 65 72 66 61 63 65 20 6e 61 6d 65 20 3a 20 57 4c 41 4e 20 0d 0a 54 68 65 72 65 20 61 72 65 20 31 20 6e 65 74 77 6f 72 6b 73 20 63 75 72 72 65 6e 74 6c 79 20 76 69 73 69 62 6c 65 2e 20 0d 0a 0d 0a 53 53 49 44 20 31 20 3a 20 32 30 32 0d 0a 20 20 20 20 4e 65 74 77 6f 72 6b 20 74 79 70 65 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 49 6e 66 72 61 73 74 72 75 63 74 75 72 65 0d 0a 20 20 20 20 41 75 74 68 65 6e 74 69 63 61 74 69 6f 6e 20 20 20 20 20 20 20 20 20 20 3a 20 57 50 41 32 2d 50 65 72 73 6f 6e 61 6c 0d 0a 20 20 20 20 45 6e 63 72 79 70 74 69 6f 6e 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 43 43 4d 50 20 0d 0a 20 20 20 20 42 53 53 49 44 20 31 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 61 38 3a 35 65 3a 34 35 3a 38 39 3a 62 65 3a 63 34 0d 0a 20 20 20 20 20 20 20 20 20 53 69 67 6e 61 6c 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 37 38 25 20 20 0d 0a 20 20 20 20 20 20 20 20 20 52 61 64 69 6f 20 74 79 70 65 20 20 20 20 20 20 20 20 20 3a 20 38 30 32 2e 31 31 61 63 0d 0a 20 20 20 20 20 20 20 20 20 42 61 6e 64 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 3a 20 35 20 47 48 7a 0d 0a 20 20 20 20 20 20 20 20 20 43 68 61 6e 6e 65 6c 20 20 20 20 20 20 20 20
+--- decoded as utf-8 ---
+ 
+Interface name : WLAN 
+There are 1 networks currently visible. 
+
+SSID 1 : 202
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    Encryption              : CCMP 
+    BSSID 1                 : a8:5e:45:89:be:c4
+         Signal             : 78%  
+         Radio type         : 802.11ac
+         Band               : 5 GHz
+         Channel            : 157 
+         Bss Load:
+             Connected Stations:         4
+             Channel Utilization:        57 (22 %)
+             Medium Available Capacity:  0 (0 us/s)
+         QoS MSCS Supported    : 0
+         QoS Map Supported     : 0
+         Basic rates (Mbps) : 6 12 24
+         Other rates (Mbps) : 9 18 36 48 54
+
+
+--- decoded as gbk ---
+ 
+Interface name : WLAN 
+There are 1 networks currently visible. 
+
+SSID 1 : 202
+    Network type            : Infrastructure
+    Authentication          : WPA2-Personal
+    Encryption              : CCMP 
+    BSSID 1                 : a8:5e:45:89:be:c4
+         Signal             : 78%  
+         Radio type         : 802.11ac
+         Band               : 5 GHz
+         Channel            : 157 
+         Bss Load:
+             Connected Stations:         4
+             Channel Utilization:        57 (22 %)
+             Medium Available Capacity:  0 (0 us/s)
+         QoS MSCS Supported    : 0
+         QoS Map Supported     : 0
+         Basic rates (Mbps) : 6 12 24
+         Other rates (Mbps) : 9 18 36 48 54
+
+
+
+============================================================
+$ netsh wlan show profiles
+exit code: 0
+raw bytes (first 400, hex): 0d 0a 50 72 6f 66 69 6c 65 73 20 6f 6e 20 69 6e 74 65 72 66 61 63 65 20 57 4c 41 4e 3a 0d 0a 0d 0a 47 72 6f 75 70 20 70 6f 6c 69 63 79 20 70 72 6f 66 69 6c 65 73 20 28 72 65 61 64 20 6f 6e 6c 79 29 0d 0a 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 0d 0a 20 20 20 20 3c 4e 6f 6e 65 3e 0d 0a 0d 0a 55 73 65 72 20 70 72 6f 66 69 6c 65 73 0d 0a 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 2d 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 76 69 76 6f 20 58 32 30 30 20 55 6c 74 72 61 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 33 44 e6 89 93 e5 8d b0 e6 9c ba 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 33 44 e6 89 93 e5 8d b0 e6 9c ba 5f 35 47 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 4d 49 46 49 2d 30 30 32 35 32 36 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 4b 4d 55 53 54 2d 57 45 42 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72 6f 66 69 6c 65 20 20 20 20 20 3a 20 43 43 43 50 0d 0a 20 20 20 20 41 6c 6c 20 55 73 65 72 20 50 72
+--- decoded as utf-8 ---
+
+Profiles on interface WLAN:
+
+Group policy profiles (read only)
+---------------------------------
+    <None>
+
+User profiles
+-------------
+    All User Profile     : vivo X200 Ultra
+    All User Profile     : 3D打印机
+    All User Profile     : 3D打印机_5G
+    All User Profile     : MIFI-002526
+    All User Profile     : KMUST-WEB
+    All User Profile     : CCCP
+    All User Profile     : 202
+    All User Profile     : CCCP 2
+    All User Profile     : CMCC-u2c6-5G
+    All User Profile     : 抛瓦拉满_5G.
+    All User Profile     : KMUST-IPv6
+    All User Profile     : vivo@铁匠@3K
+    All User Profile     : Redmi K70_ZdqiiQm_MI
+    All User Profile     : Redmi K70
+    All User Profile     : 401
+    All User Profile     : xiaomi-router-ra74_miap589b_5G
+    All User Profile     : Xiaomi 12 Pro
+    All User Profile     : TP-LINK_5G_6403
+    All User Profile     : 88888888
+    All User Profile     : CZZ
+    All User Profile     : Xiaomi 12 Pro 2
+    All User Profile     : LK
+    All User Profile     : yanxiaojun518
+    All User Profile     : AP5
+    All User Profile     : IoT_114514
+    All User Profile     : ESP32
+    All User Profile     : IoT
+    All User Profile     : nova6SE
+    All User Profile     : Kafang_5G
+    All User Profile     : 魔法上网
+    All User Profile     : 314
+    All User Profile     : HiWiFi_633F00_5G
+    All User Profile     : CCCP_5G
+    All User Profile     : Lenovo_C301
+    All User Profile     : Lenovo_4E7C36
+    All User Profile     : Tsuki
+    All User Profile     : 314_5G
+    All User Profile     : Dormito Cafe 2
+    All User Profile     : HiWiFi_633F00
+    All User Profile     : auhome_acYJtj
+    All User Profile     : liunianCAFE_5G
+    All User Profile     : wifi-robots.com_00EEA0
+    All User Profile     : vivo X21A
+    All User Profile     : vivo
+    All User Profile     : lz666
+    All User Profile     : czz
+    All User Profile     : auhome_acYJtj-A
+    All User Profile     : WPT_LAB_5G
+    All User Profile     : Tim’s phone
+    All User Profile     : TP-LINK_DC09
+    All User Profile     : TP-LINK_C460
+    All User Profile     : Summer
+    All User Profile     : Redmi K30 Ultra
+    All User Profile     : OnePlus 8T
+    All User Profile     : MOXA
+    All User Profile     : MISAKA 2
+    All User Profile     : MISAKA
+    All User Profile     : Lilia
+    All User Profile     : D-Link_DIR-613
+    All User Profile     : LYL
+    All User Profile     : LYFB
+    All User Profile     : LKK
+    All User Profile     : LIN
+    All User Profile     : LILIN
+    All User Profile     : KM_WiFi
+    All User Profile     : KMUST-UnAuto
+    All User Profile     : KMUST-Auto 2
+    All User Profile     : IKM_WiFi
+    All User Profile     : Hi- OPPLE-READINGLAMP-0134DE    
+    All User Profile     : HUAWEI5G 2
+    All User Profile     : HUAWEI5G
+    All User Profile     : HUAWEI-5G
+    All User Profile     : HH 2
+    All User Profile     : HH
+    All User Profile     : FAST_275E 2
+    All User Profile     : FAST_275E
+    All User Profile     : DESKTOP-C497MQM 1703
+    All User Profile     : CMCC-jbYt
+    All User Profile     : CMCC
+    All User Profile     : 301_5G
+    All User Profile     : 301
+
+
+--- decoded as gbk ---
+
+Profiles on interface WLAN:
+
+Group policy profiles (read only)
+---------------------------------
+    <None>
+
+User profiles
+-------------
+    All User Profile     : vivo X200 Ultra
+    All User Profile     : 3D鎵撳嵃鏈�
+    All User Profile     : 3D鎵撳嵃鏈篲5G
+    All User Profile     : MIFI-002526
+    All User Profile     : KMUST-WEB
+    All User Profile     : CCCP
+    All User Profile     : 202
+    All User Profile     : CCCP 2
+    All User Profile     : CMCC-u2c6-5G
+    All User Profile     : 鎶涚摝鎷夋弧_5G.
+    All User Profile     : KMUST-IPv6
+    All User Profile     : vivo@閾佸尃@3K
+    All User Profile     : Redmi K70_ZdqiiQm_MI
+    All User Profile     : Redmi K70
+    All User Profile     : 401
+    All User Profile     : xiaomi-router-ra74_miap589b_5G
+    All User Profile     : Xiaomi 12 Pro
+    All User Profile     : TP-LINK_5G_6403
+    All User Profile     : 88888888
+    All User Profile     : CZZ
+    All User Profile     : Xiaomi 12 Pro 2
+    All User Profile     : LK
+    All User Profile     : yanxiaojun518
+    All User Profile     : AP5
+    All User Profile     : IoT_114514
+    All User Profile     : ESP32
+    All User Profile     : IoT
+    All User Profile     : nova6SE
+    All User Profile     : Kafang_5G
+    All User Profile     : 榄旀硶涓婄綉
+    All User Profile     : 314
+    All User Profile     : HiWiFi_633F00_5G
+    All User Profile     : CCCP_5G
+    All User Profile     : Lenovo_C301
+    All User Profile     : Lenovo_4E7C36
+    All User Profile     : Tsuki
+    All User Profile     : 314_5G
+    All User Profile     : Dormito Cafe 2
+    All User Profile     : HiWiFi_633F00
+    All User Profile     : auhome_acYJtj
+    All User Profile     : liunianCAFE_5G
+    All User Profile     : wifi-robots.com_00EEA0
+    All User Profile     : vivo X21A
+    All User Profile     : vivo
+    All User Profile     : lz666
+    All User Profile     : czz
+    All User Profile     : auhome_acYJtj-A
+    All User Profile     : WPT_LAB_5G
+    All User Profile     : Tim鈥檚 phone
+    All User Profile     : TP-LINK_DC09
+    All User Profile     : TP-LINK_C460
+    All User Profile     : Summer
+    All User Profile     : Redmi K30 Ultra
+    All User Profile     : OnePlus 8T
+    All User Profile     : MOXA
+    All User Profile     : MISAKA 2
+    All User Profile     : MISAKA
+    All User Profile     : Lilia
+    All User Profile     : D-Link_DIR-613
+    All User Profile     : LYL
+    All User Profile     : LYFB
+    All User Profile     : LKK
+    All User Profile     : LIN
+    All User Profile     : LILIN
+    All User Profile     : KM_WiFi
+    All User Profile     : KMUST-UnAuto
+    All User Profile     : KMUST-Auto 2
+    All User Profile     : IKM_WiFi
+    All User Profile     : Hi- OPPLE-READINGLAMP-0134DE    
+    All User Profile     : HUAWEI5G 2
+    All User Profile     : HUAWEI5G
+    All User Profile     : HUAWEI-5G
+    All User Profile     : HH 2
+    All User Profile     : HH
+    All User Profile     : FAST_275E 2
+    All User Profile     : FAST_275E
+    All User Profile     : DESKTOP-C497MQM 1703
+    All User Profile     : CMCC-jbYt
+    All User Profile     : CMCC
+    All User Profile     : 301_5G
+    All User Profile     : 301
+
+
