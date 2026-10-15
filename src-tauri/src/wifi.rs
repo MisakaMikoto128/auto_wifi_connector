@@ -418,7 +418,10 @@ mod tests {
 
     #[test]
     fn auth_text_mapping() {
-        assert_eq!(auth_algorithm_text(DOT11_AUTH_ALGO_RSNA_PSK), "WPA2-Personal");
+        assert_eq!(
+            auth_algorithm_text(DOT11_AUTH_ALGO_RSNA_PSK),
+            "WPA2-Personal"
+        );
         assert_eq!(auth_algorithm_text(DOT11_AUTH_ALGO_80211_OPEN), "Open");
     }
 
