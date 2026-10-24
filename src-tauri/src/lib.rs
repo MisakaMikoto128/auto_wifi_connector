@@ -136,7 +136,8 @@ fn show_main_window(app: &AppHandle) {
 /// 从网络下载的 exe 会被浏览器附加 Zone.Identifier 流；
 /// 带该标记的 exe 被开机自启项启动时，Windows 会显示
 /// 「无法验证发布者」的授权框。首次运行即删除标记，
-/// 此后开机自启不再出现该提示。
+/// 此后开机自启不再出现该提示。仅 Windows 存在此机制。
+#[cfg(windows)]
 fn remove_mark_of_the_web() {
     let Ok(exe) = std::env::current_exe() else {
         return;
@@ -144,6 +145,9 @@ fn remove_mark_of_the_web() {
     let ads = format!("{}:Zone.Identifier", exe.display());
     let _ = std::fs::remove_file(ads);
 }
+
+#[cfg(not(windows))]
+fn remove_mark_of_the_web() {}
 
 /// 同步开机自启注册。
 ///

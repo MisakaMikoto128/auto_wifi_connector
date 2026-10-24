@@ -1,47 +1,17 @@
-//! WiFi 扫描、连接与状态查询，基于 Windows WLAN API（wlanapi.dll）。
+//! Windows 实现：WLAN API（wlanapi.dll 结构体）。
 //!
 //! 全部数据来自结构体而非文本解析，与系统显示语言、区域编码无关。
-//! SSID 按 WiFi 标准以 UTF-8 字节传输，解码优先 UTF-8、失败回退 GBK。
+//! 共享类型见 super（mod.rs）。
 
-use encoding_rs::GBK;
-use serde::Serialize;
+use super::{ssid_to_string, ConnectionInfo, WifiNetwork};
 use std::os::windows::process::CommandExt;
 use std::process::Command;
-use std::time::{Duration, Instant};
 use windows::core::PCWSTR;
 use windows::Win32::Foundation::HANDLE;
 use windows::Win32::NetworkManagement::WiFi::*;
 
 /// Win32 创建进程标志：不创建控制台窗口。
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-/// 一个扫描到的 WiFi 网络。
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WifiNetwork {
-    pub ssid: String,
-    /// 信号强度，0-100。
-    pub signal: u8,
-    /// 是否需要密码（开放网络为 false）。
-    pub secured: bool,
-    /// 是否存在同名配置，存在则可直接连接。
-    pub saved: bool,
-    /// 是否为当前已连接的网络。
-    pub connected: bool,
-}
-
-/// 当前连接的详细信息。
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ConnectionInfo {
-    pub ssid: String,
-    pub band: String,
-    pub channel: u32,
-    pub receive_rate_mbps: f32,
-    pub transmit_rate_mbps: f32,
-    pub authentication: String,
-    pub signal: u8,
-}
 
 /// WLAN 会话：客户端句柄与第一个无线接口 GUID 的生命周期封装。
 struct Wlan {
@@ -84,14 +54,6 @@ impl Drop for Wlan {
         unsafe {
             let _ = WlanCloseHandle(self.handle, None);
         }
-    }
-}
-
-/// SSID 原始字节解码：UTF-8 优先（WiFi 标准），失败回退 GBK。
-fn ssid_to_string(raw: &[u8]) -> String {
-    match String::from_utf8(raw.to_vec()) {
-        Ok(text) => text,
-        Err(_) => GBK.decode(raw).0.into_owned(),
     }
 }
 
@@ -336,18 +298,6 @@ pub fn disconnect() -> Result<(), String> {
     }
 }
 
-/// 等待网卡关联到指定 SSID，超时返回 false。
-pub fn wait_associated(ssid: &str, timeout: Duration) -> bool {
-    let start = Instant::now();
-    while start.elapsed() < timeout {
-        if connected_ssid().as_deref() == Some(ssid) {
-            return true;
-        }
-        std::thread::sleep(Duration::from_millis(800));
-    }
-    false
-}
-
 /// WiFi 无线电是否打开。查询失败或不存在 WiFi 无线电时返回 None。
 ///
 /// 使用 WinRT Radio API，覆盖 RF 开关关闭、飞行模式等「WiFi 未打开」的场景。
@@ -397,18 +347,6 @@ fn run_netsh_plain(args: &[&str]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn decodes_utf8_ssid() {
-        assert_eq!(ssid_to_string("魔法上网".as_bytes()), "魔法上网");
-        assert_eq!(ssid_to_string(b"CMCC-u2c6-5G"), "CMCC-u2c6-5G");
-    }
-
-    #[test]
-    fn decodes_gbk_ssid_fallback() {
-        let (gbk, _, _) = GBK.encode("中文热点");
-        assert_eq!(ssid_to_string(&gbk), "中文热点");
-    }
 
     #[test]
     fn freq_mapping() {

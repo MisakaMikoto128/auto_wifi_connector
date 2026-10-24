@@ -17,6 +17,19 @@
 **下载**：从 [Releases](../../releases) 获取 Windows x64 压缩包，解压后直接运行，无需安装 Rust 环境。
 **项目页**：<https://misakamikoto128.github.io/auto_wifi_connector/>
 
+## 平台支持
+
+| 平台 | 状态 | Wi-Fi 实现 | 产物 |
+| --- | --- | --- | --- |
+| Windows 10/11 x64 | ✅ 完整 | WLAN API（wlanapi.dll） | NSIS 安装包、便携 zip |
+| macOS 10.15+ (Apple Silicon / Intel) | ✅ 构建 | CoreWLAN | app、dmg |
+| Linux x64 (NetworkManager) | ✅ 构建 | NetworkManager (nmcli) | deb、rpm、AppImage |
+
+- Wi-Fi 数据层按平台接入各自官方接口，接口统一（`wifi` 模块即平台抽象层），与系统显示语言无关
+- macOS 说明：系统要求应用获得「定位服务」授权后才能读取 SSID（macOS 14+ 对所有第三方应用的统一限制）；连接已保存网络使用系统钥匙串凭证
+- Linux 说明：依赖 NetworkManager（桌面发行版默认具备）；连接使用 NetworkManager 已保存的连接配置
+- CI 在三个平台分别执行 fmt / clippy / test；本机开发环境为 Windows，macOS 与 Linux 的实机行为反馈欢迎提 Issue
+
 ## 安装与 Windows SmartScreen 说明
 
 程序未购买代码签名证书（多数开源项目相同，例如 cc-switch 的 exe 同样未签名）。从网络下载的未签名 exe 首次运行时，Windows 可能显示 SmartScreen 提示「Windows 已保护你的电脑」，点击「更多信息 → 仍要运行」即可。

@@ -2,6 +2,15 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] - 2026-10-16
+
+### 新增
+
+- 全平台支持：macOS（CoreWLAN，Apple 官方 Wi-Fi 框架）与 Linux（NetworkManager nmcli）
+- Wi-Fi 数据层重组为平台抽象层：统一接口 + 编译期平台实现（windows.rs / macos.rs / linux.rs），新增平台只需增加一个实现模块
+- CI 扩展为三平台矩阵（Windows / macOS / Linux 各自执行 fmt、clippy、test）
+- Release 产物扩展：Windows NSIS 安装包与便携 zip、macOS app 与 dmg（含 Apple Silicon 与 Intel）、Linux deb 与 rpm 与 AppImage
+
 ## [0.4.0] - 2026-10-16
 
 ### 变更
@@ -121,6 +130,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.5.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.2.6...v0.3.0

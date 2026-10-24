@@ -187,10 +187,13 @@ async function refreshConnectionInfo() {
     const info = await invoke("get_connection_info");
     if (info) {
       const rate = Math.max(info.receiveRateMbps, info.transmitRateMbps);
-      setStatus(
-        "online",
-        `已连接：${info.ssid} · ${info.band} · 信道 ${info.channel} · ${rate} Mbps`
-      );
+      const parts = [
+        info.ssid,
+        info.band,
+        info.channel ? `信道 ${info.channel}` : "",
+        rate > 0 ? `${rate} Mbps` : "",
+      ].filter(Boolean);
+      setStatus("online", `已连接：${parts.join(" · ")}`);
     }
   } catch {
     /* 详情获取失败时保留基础状态文本 */
