@@ -9,7 +9,7 @@
 
 use super::{ssid_to_string, ConnectionInfo, WifiNetwork};
 use objc2_core_wlan::{CWChannelBand, CWInterface, CWSecurity, CWWiFiClient};
-use objc2_foundation::{NSSet, NSString};
+use objc2_foundation::NSString;
 use std::process::Command;
 
 /// 获取默认 Wi-Fi 接口。
