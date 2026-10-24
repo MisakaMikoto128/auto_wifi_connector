@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.1] - 2026-10-24
+
+### 变更
+
+- Linux 实现从 nmcli 文本解析切换为 [nmrs](https://crates.io/crates/nmrs)（MIT）的 NetworkManager D-Bus API：扫描、信号、已保存配置（known）、当前连接（is_active）、连接详情、连接与断开全部来自该库，消除 CLI 输出解析；README 注明引用来源
+
 ## [0.5.0] - 2026-10-16
 
 ### 新增
@@ -130,6 +136,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.5.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.0...v0.3.1

@@ -26,6 +26,14 @@
 | Linux x64 (NetworkManager) | ✅ 构建 | NetworkManager (nmcli) | deb、rpm、AppImage |
 
 - Wi-Fi 数据层按平台接入各自官方接口，接口统一（`wifi` 模块即平台抽象层），与系统显示语言无关
+
+### 引用与致谢
+
+Wi-Fi 数据层的各平台实现基于以下经过验证的开源组件构建：
+
+- **Linux**：[nmrs](https://crates.io/crates/nmrs)（MIT）——NetworkManager D-Bus 异步绑定，承担扫描、连接、状态查询
+- **macOS**：[objc2-core-wlan](https://crates.io/crates/objc2-core-wlan)（MIT）——Apple CoreWLAN 框架的官方自动生成绑定
+- **Windows**：[windows](https://crates.io/crates/windows)（MIT/Apache-2.0）——Microsoft 官方生成的 Win32 API 绑定（WLAN API）
 - macOS 说明：系统要求应用获得「定位服务」授权后才能读取 SSID（macOS 14+ 对所有第三方应用的统一限制）；连接已保存网络使用系统钥匙串凭证
 - Linux 说明：依赖 NetworkManager（桌面发行版默认具备）；连接使用 NetworkManager 已保存的连接配置
 - CI 在三个平台分别执行 fmt / clippy / test；本机开发环境为 Windows，macOS 与 Linux 的实机行为反馈欢迎提 Issue

@@ -1,6 +1,6 @@
 [package]
 name = "auto-wifi-connector"
-version = "0.5.0"
+version = "0.5.1"
 description = "Automatically reconnects to a working WiFi network when internet access drops"
 edition = "2021"
 rust-version = "1.77.2"
@@ -19,6 +19,10 @@ tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 encoding_rs = "0.8"
+[target.'cfg(target_os = "linux")'.dependencies]
+nmrs = "3.5"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = ["Devices_Radios", "Foundation", "Foundation_Collections", "Win32_NetworkManagement_WiFi", "Win32_NetworkManagement_Ndis", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
