@@ -19,7 +19,8 @@ fn interface() -> Option<objc2::rc::Retained<CWInterface>> {
 }
 
 /// RSSI（dBm，约 -100 至 -40）映射为 0-100 信号百分比。
-fn rssi_to_percent(rssi: i64) -> u8 {
+/// 参数为 NSInteger（macOS 目标上即 isize）。
+fn rssi_to_percent(rssi: isize) -> u8 {
     (((rssi + 100) * 2).clamp(0, 100)) as u8
 }
 
