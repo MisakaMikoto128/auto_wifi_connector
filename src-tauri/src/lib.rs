@@ -91,8 +91,10 @@ fn set_auto_reconnect(app: AppHandle, state: State<'_, Shared>, enabled: bool) -
 /// 在系统浏览器中打开开源仓库页面。
 #[tauri::command]
 fn open_repo() {
-    use windows::core::w;
+    const URL: &str = "https://github.com/MisakaMikoto128/auto_wifi_connector";
+    #[cfg(windows)]
     unsafe {
+        use windows::core::w;
         let _ = windows::Win32::UI::Shell::ShellExecuteW(
             None,
             w!("open"),
@@ -101,6 +103,14 @@ fn open_repo() {
             None,
             windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
         );
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").arg(URL).spawn();
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(URL).spawn();
     }
 }
 
