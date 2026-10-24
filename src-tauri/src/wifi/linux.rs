@@ -98,7 +98,7 @@ pub fn scan() -> Result<Vec<WifiNetwork>, String> {
             existing.connected |= connected;
         } else {
             networks.push(WifiNetwork {
-                ssid,
+                ssid: ssid.clone(),
                 signal,
                 secured,
                 saved: saved_list.iter().any(|s| s == &ssid),
