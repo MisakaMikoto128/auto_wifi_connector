@@ -54,7 +54,7 @@ jobs:
       # uploadUpdaterJson 生成 latest.json（软件内更新清单）随 Release 上传，
       # preferNsis 让 Windows 更新走 NSIS 安装包
       - name: 构建平台安装包
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
