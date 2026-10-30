@@ -7,6 +7,7 @@ use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_updater::UpdaterExt;
 
 /// 扫描可见 WiFi 网络（标注已保存配置与当前连接）。
 #[tauri::command]
@@ -141,6 +142,99 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+/// 当前运行版本号。
+#[tauri::command]
+fn app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+/// 更新检查结果。
+#[derive(Debug, serde::Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+enum UpdateStatus {
+    UpToDate,
+    Available {
+        version: String,
+        notes: Option<String>,
+        pub_date: Option<String>,
+    },
+}
+
+/// 向更新源查询是否有新版本。
+async fn check_for_update(app: &AppHandle) -> Result<UpdateStatus, String> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(match update {
+        Some(u) => UpdateStatus::Available {
+            version: u.version.clone(),
+            notes: u.body.clone(),
+            pub_date: u.date.map(|d| d.to_string()),
+        },
+        None => UpdateStatus::UpToDate,
+    })
+}
+
+/// 检查是否有新版本（更新源：GitHub Releases，更新包经 minisign 签名校验）。
+#[tauri::command]
+async fn check_update(app: AppHandle) -> Result<UpdateStatus, String> {
+    check_for_update(&app).await
+}
+
+/// 下载并安装更新。更新包下载后校验签名再运行安装器；
+/// Windows 上安装器启动后进程即退出，macOS/Linux 由 app.restart() 重启生效。
+#[tauri::command]
+async fn install_update(app: AppHandle) -> Result<(), String> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "当前已是最新版本".to_string())?;
+    let handle = app.clone();
+    let mut received: u64 = 0;
+    update
+        .download_and_install(
+            move |chunk, total| {
+                received += chunk as u64;
+                let _ = handle.emit("update-progress", (received, total));
+            },
+            || {},
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    app.restart();
+}
+
+/// 后台检查更新：发现新版本时广播 update-available（notify=true 时弹出主窗口），
+/// 无更新/失败时广播 update-checked 供页脚提示。
+fn spawn_update_check(app: AppHandle, notify: bool) {
+    tauri::async_runtime::spawn(async move {
+        match check_for_update(&app).await {
+            Ok(UpdateStatus::Available { version, .. }) => {
+                let _ = app.emit("update-available", version);
+                if notify {
+                    show_main_window(&app);
+                }
+            }
+            Ok(UpdateStatus::UpToDate) => {
+                if notify {
+                    let _ = app.emit("update-checked", "up_to_date");
+                }
+            }
+            Err(_) => {
+                if notify {
+                    let _ = app.emit("update-checked", "error");
+                }
+            }
+        }
+    });
+}
+
 /// 开机自启注册的启动参数：本次启动来自开机自启，不显示窗口、仅在托盘待命。
 const AUTOSTART_ARG: &str = "--silent";
 
@@ -205,6 +299,7 @@ pub fn run() {
                 .args([AUTOSTART_ARG])
                 .build(),
         )
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(monitor::new_shared())
         .invoke_handler(tauri::generate_handler![
             get_wifi_list,
@@ -214,12 +309,16 @@ pub fn run() {
             set_auto_reconnect,
             autostart_is_enabled,
             autostart_set,
+            app_version,
+            check_update,
+            install_update,
             open_repo,
         ])
         .setup(|app| {
             let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
+            let check = MenuItem::with_id(app, "check_update", "检查更新", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &quit])?;
+            let menu = Menu::with_items(app, &[&show, &check, &quit])?;
             TrayIconBuilder::new()
                 .icon(tauri::image::Image::from_bytes(include_bytes!(
                     "../icons/tray.png"
@@ -229,6 +328,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => app.exit(0),
                     "show" => show_main_window(app),
+                    "check_update" => spawn_update_check(app.clone(), true),
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
@@ -261,6 +361,13 @@ pub fn run() {
             shared.lock().unwrap().enabled = load_settings(app.handle()).auto_reconnect;
 
             monitor::spawn(app.handle().clone(), shared.inner().clone());
+
+            // 启动数秒后静默检查一次更新；发现新版本仅在界面提示，不弹窗
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                spawn_update_check(handle, false);
+            });
 
             // 开机自启启动：保持静默后台，仅托盘待命；手动启动才显示主窗口
             if !is_autostart_launch(std::env::args().skip(1)) {

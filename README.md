@@ -69,6 +69,7 @@ certutil -hashfile auto-wifi-connector-vX.Y.Z-windows-x64.zip SHA256
 - **开机自启**：默认注册，可在界面中关闭；已开启时每次启动自动更新为当前程序路径，版本升级后开机自启启动的是新程序；开机自启启动时静默后台，不弹出主窗口（手动启动才显示界面）
 - **单实例运行**：重复启动时聚焦已有窗口
 - **实时界面**：WiFi 列表每 6 秒刷新，监控状态变化即时推送到界面
+- **软件内更新**：页脚与托盘菜单可检查是否最新版本，发现新版本一键下载安装（下载进度实时显示）；更新包经 minisign 签名校验，更新源为本仓库 GitHub Releases
 - **下载安全**：程序首次运行时自动移除 exe 的网络来源标记（MOTW），开机自启不再出现「无法验证发布者」提示；每个 Release 附 SHA256 校验文件
 
 ## 托盘
@@ -142,6 +143,22 @@ tests/         # UI 预览页（mock 数据）与验证截图
 ## 发布
 
 推送 `v*` 形式的 tag 会触发 [Release 工作流](.github/workflows/release.yml)：自动构建 release 版本、打包并发布到 Releases。发布前请先更新 CHANGELOG.md 与 `src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 中的版本号。
+
+软件内更新（v0.6.0 起）需要更新包签名密钥，一次性配置：
+
+1. 生成密钥对（私钥务必妥善保存，丢失后已发布版本无法再签发更新）：
+
+   ```sh
+   npx @tauri-apps/cli signer generate -w ~/.tauri/auto-wifi-connector.key
+   ```
+
+2. 在仓库 Settings → Secrets and variables → Actions 添加两个 secret：
+   - `TAURI_SIGNING_PRIVATE_KEY`：私钥文件内容
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：私钥密码（无密码则留空）
+
+3. 公钥写入 `src-tauri/tauri.conf.json` 的 `plugins.updater.pubkey`。
+
+工作流在每次发布时生成 `latest.json` 更新清单并随 Release 上传，应用端通过固定端点 `releases/latest/download/latest.json` 检测新版本。Windows 更新采用静默安装（passive），安装完成后自动重启；便携 zip 版执行软件内更新会运行 NSIS 安装包（转为安装版），仍需便携版时从 Releases 手动下载覆盖。
 
 ## 参与贡献
 

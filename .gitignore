@@ -18,3 +18,8 @@ Thumbs.db
 
 # 发布产物
 dist/
+
+# 工作过程临时文件
+.err
+.out
+.zwork/

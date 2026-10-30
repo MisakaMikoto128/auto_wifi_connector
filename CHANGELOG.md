@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.6.0] - 2026-10-30
+
+### 新增
+
+- 软件内更新：页脚「检查更新」与托盘「检查更新」菜单可检测是否最新版本，发现新版本时公告条一键下载安装，下载进度实时显示。更新源为本仓库 GitHub Releases（`latest.json` 清单），更新包经 minisign 签名校验，Windows 静默安装（passive）后自动重启；发布流水线新增签名密钥校验与更新清单生成
+
 ## [0.5.2] - 2026-10-30
 
 ### 修复
@@ -142,6 +148,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.6.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.4.0...v0.5.0

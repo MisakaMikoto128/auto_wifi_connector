@@ -92,7 +92,13 @@
 
     <footer class="colophon">
       <div class="rule-masthead thin"></div>
-      <p>Printed by Auto WiFi Connector · 关闭窗口后程序转入托盘运行 · 右键托盘图标可退出 ·
+      <p class="update-notice hidden" id="update-notice">
+        <span class="update-badge">UPDATE</span>
+        <span id="update-notice-text">发现新版本</span>
+        <a href="#" id="update-action">下载并安装</a>
+      </p>
+      <p>Printed by Auto WiFi Connector · 版本 <span id="app-version">—</span> · 关闭窗口后程序转入托盘运行 · 右键托盘图标可退出 ·
+        <a href="#" id="update-check-link">检查更新</a> ·
         <a href="#" id="repo-link">开源仓库 GitHub</a>
       </p>
     </footer>

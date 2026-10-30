@@ -1,7 +1,9 @@
 /* The WiFi Herald — 前端逻辑
  * 通过 window.__TAURI__ 与 Rust 后端交互：
  *   invoke: get_wifi_list / get_snapshot / set_auto_reconnect / autostart_is_enabled / autostart_set
+ *           app_version / check_update / install_update
  *   event : wifi-list（网络列表）/ monitor（监控状态快照）
+ *           update-available（发现新版本）/ update-checked（无更新/检查失败）/ update-progress（下载进度）
  */
 
 const { invoke } = window.__TAURI__.core;
@@ -165,6 +167,79 @@ $("repo-link").addEventListener("click", (event) => {
   invoke("open_repo");
 });
 
+/* ---------- 软件内更新 ----------
+ * 启动后静默检查一次（后端触发）；页脚「检查更新」手动复查，
+ * 发现新版本时公告条提供一键下载安装（签名校验后运行安装包）。
+ */
+
+const updateEls = {
+  notice: $("update-notice"),
+  noticeText: $("update-notice-text"),
+  action: $("update-action"),
+  checkLink: $("update-check-link"),
+  version: $("app-version"),
+};
+
+let updateChecking = false;
+let updateInstalling = false;
+let checkTextTimer = null;
+
+function flashCheckLink(text) {
+  updateEls.checkLink.textContent = text;
+  clearTimeout(checkTextTimer);
+  checkTextTimer = setTimeout(() => {
+    updateEls.checkLink.textContent = "检查更新";
+  }, 4000);
+}
+
+function showUpdateNotice(version) {
+  updateEls.notice.classList.remove("hidden");
+  updateEls.noticeText.innerHTML = `发现新版本 <b>v${escapeHtml(version)}</b>`;
+  updateEls.action.classList.remove("busy");
+  updateEls.action.textContent = "下载并安装";
+}
+
+async function checkUpdate(manual) {
+  if (updateChecking || updateInstalling) return;
+  updateChecking = true;
+  if (manual) updateEls.checkLink.textContent = "正在检查…";
+  try {
+    const result = await invoke("check_update");
+    if (result.status === "available") {
+      showUpdateNotice(result.version);
+      if (manual) updateEls.checkLink.textContent = "检查更新";
+    } else if (manual) {
+      flashCheckLink("已是最新");
+    }
+  } catch {
+    if (manual) flashCheckLink("检查失败 · 点击重试");
+  }
+  updateChecking = false;
+}
+
+updateEls.checkLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  checkUpdate(true);
+});
+
+updateEls.action.addEventListener("click", async (event) => {
+  event.preventDefault();
+  if (updateInstalling) return;
+  updateInstalling = true;
+  updateEls.action.classList.add("busy");
+  updateEls.action.textContent = "正在下载…";
+  try {
+    // Windows 上安装器启动后进程即退出；macOS/Linux 由后端重启
+    await invoke("install_update");
+    updateEls.noticeText.textContent = "正在安装，程序即将重启…";
+    updateEls.action.textContent = "";
+  } catch {
+    updateInstalling = false;
+    updateEls.action.classList.remove("busy");
+    updateEls.action.textContent = "更新失败 · 点击重试";
+  }
+});
+
 /* ---------- 手动刷新 ---------- */
 
 $("refresh-btn").addEventListener("click", async (event) => {
@@ -292,14 +367,29 @@ async function init() {
   await listen("wifi-list", (event) => renderWifiList(event.payload));
   await listen("monitor", (event) => renderMonitor(event.payload));
 
-  const [networks, snapshot, autostart] = await Promise.all([
+  // 托盘「检查更新」与启动静默检查的结果经事件到达页脚
+  await listen("update-available", (event) => showUpdateNotice(event.payload));
+  await listen("update-checked", (event) => {
+    if (event.payload === "up_to_date") flashCheckLink("已是最新");
+    else if (event.payload === "error") flashCheckLink("检查失败 · 点击重试");
+  });
+  await listen("update-progress", (event) => {
+    const [received, total] = event.payload;
+    updateEls.action.textContent = total
+      ? `正在下载 ${Math.round((received / total) * 100)}%`
+      : `已下载 ${(received / 1048576).toFixed(1)} MB`;
+  });
+
+  const [networks, snapshot, autostart, version] = await Promise.all([
     invoke("get_wifi_list"),
     invoke("get_snapshot"),
     invoke("autostart_is_enabled"),
+    invoke("app_version"),
   ]);
   renderWifiList(networks);
   renderMonitor(snapshot);
   setSwitch(els.autostartSwitch, autostart);
+  updateEls.version.textContent = `v${version}`;
 }
 
 init().catch((err) => setStatus("offline", `初始化失败：${err}`));

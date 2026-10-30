@@ -527,6 +527,40 @@ body {
   padding: 6px 0 2px;
 }
 
+/* ---------- 页脚软件内更新 ---------- */
+
+.update-notice {
+  font-size: 12px;
+  color: var(--ink);
+  padding: 7px 0 0;
+  animation: view-in 0.4s ease both;
+}
+
+.update-badge {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1px 7px;
+  margin-right: 7px;
+}
+
+.update-notice a {
+  color: var(--red);
+  font-weight: 700;
+  font-style: normal;
+}
+
+.update-notice a:hover { background: var(--red); color: var(--paper); }
+
+.update-notice a.busy {
+  pointer-events: none;
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
 /* ---------- 动画 ---------- */
 
 @keyframes blink {
