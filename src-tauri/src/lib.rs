@@ -141,6 +141,17 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+/// 开机自启注册的启动参数：本次启动来自开机自启，不显示窗口、仅在托盘待命。
+const AUTOSTART_ARG: &str = "--silent";
+
+/// 判断本次启动是否由开机自启发起（命令行参数精确匹配 `--silent`）。
+///
+/// 主窗口在配置中默认隐藏，手动启动时在 setup 末尾显式显示；
+/// 开机自启的注册项由 autostart 插件带上 `--silent` 参数，启动后保持静默。
+fn is_autostart_launch<I: IntoIterator<Item = String>>(args: I) -> bool {
+    args.into_iter().any(|arg| arg == AUTOSTART_ARG)
+}
+
 /// 删除 exe 自身的 MOTW（Mark of the Web）网络来源标记。
 ///
 /// 从网络下载的 exe 会被浏览器附加 Zone.Identifier 流；
@@ -189,7 +200,11 @@ pub fn run() {
             // 第二个实例启动时聚焦已有窗口，不重复运行
             show_main_window(app);
         }))
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(
+            tauri_plugin_autostart::Builder::new()
+                .args([AUTOSTART_ARG])
+                .build(),
+        )
         .manage(monitor::new_shared())
         .invoke_handler(tauri::generate_handler![
             get_wifi_list,
@@ -246,6 +261,11 @@ pub fn run() {
             shared.lock().unwrap().enabled = load_settings(app.handle()).auto_reconnect;
 
             monitor::spawn(app.handle().clone(), shared.inner().clone());
+
+            // 开机自启启动：保持静默后台，仅托盘待命；手动启动才显示主窗口
+            if !is_autostart_launch(std::env::args().skip(1)) {
+                show_main_window(app.handle());
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
@@ -272,5 +292,20 @@ mod tests {
         assert!(!parsed.auto_reconnect);
         let corrupt: Settings = serde_json::from_str("not json").unwrap_or_default();
         assert!(!corrupt.auto_reconnect);
+    }
+
+    #[test]
+    fn autostart_launch_detection() {
+        assert!(is_autostart_launch(vec!["--silent".to_string()]));
+        assert!(is_autostart_launch(vec![
+            "C:\\app\\auto-wifi-connector.exe".to_string(),
+            "--silent".to_string()
+        ]));
+        assert!(!is_autostart_launch(Vec::<String>::new()));
+        assert!(!is_autostart_launch(vec!["--silent-run".to_string()]));
+        assert!(!is_autostart_launch(vec![
+            "-s".to_string(),
+            "--other".to_string()
+        ]));
     }
 }

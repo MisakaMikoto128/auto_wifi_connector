@@ -2,6 +2,12 @@
 
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.2] - 2026-10-30
+
+### 修复
+
+- 开机自启启动时弹出主窗口：主窗口改为默认隐藏，自启注册项补充 `--silent` 启动参数；开机自启启动时仅在托盘后台待命，手动启动才显示界面。旧的自启注册项在新版本首次运行时自动更新为带参数的新项
+
 ## [0.5.1] - 2026-10-24
 
 ### 变更
@@ -136,6 +142,7 @@
 - 独立保底脚本 tools/keepalive.py
 - GitHub Pages 项目页
 
+[0.5.2]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MisakaMikoto128/auto_wifi_connector/compare/v0.3.1...v0.4.0
